@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Mi Proyecto</title>
+    <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">MiProyecto</a>
+        <div class="nav-links">
+            <a href="/">Inicio</a>
+            <a href="/acerca.html">Acerca de</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Acceso de Usuario</h1>
+        <p>Ingresa tu código y contraseña para continuar.</p>
+        
+        <form action="/login" method="POST" class="login-form">
+            <input type="text" id="codigo" name="codigo" placeholder="Tu Código de Acceso" required>
+            <input type="password" id="contrasena" name="contrasena" placeholder="Tu Contraseña" required>
+            <button type="submit" class="cta-button">Entrar</button>
+        </form>
+    </div>
+
+</body>
+</html>

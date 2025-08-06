@@ -1,0 +1,124 @@
+/* Estilos Generales y para el Cuerpo de la Página */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    background-color: #f4f7f6;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Contenedor Principal para centrar el contenido */
+.container {
+    flex: 1;
+    width: 90%;
+    max-width: 800px;
+    margin: 2rem auto;
+    text-align: center;
+    padding: 2rem;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+/* Barra de Navegación */
+nav {
+    background-color: #ffffff;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav .logo {
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: #007BFF;
+    text-decoration: none;
+}
+
+nav .nav-links a {
+    color: #555;
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 1.5rem;
+    transition: color 0.3s ease;
+}
+
+nav .nav-links a:hover {
+    color: #007BFF;
+}
+
+/* Títulos y Texto */
+h1 {
+    color: #333;
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #666;
+}
+
+/* Botón Grande de Login (y otros botones) */
+.cta-button {
+    display: inline-block;
+    background-color: #007BFF;
+    color: #ffffff;
+    padding: 15px 35px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 50px; /* Bordes redondeados para un look moderno */
+    margin-top: 1.5rem;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.cta-button:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px); /* Pequeño efecto al pasar el mouse */
+}
+
+/* Estilos para el Formulario de Login */
+.login-form {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Espacio entre los elementos del formulario */
+}
+
+.login-form input {
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.login-form input:focus {
+    outline: none;
+    border-color: #007BFF;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+/* Estilos para la página "Acerca de" */
+.about-content {
+    text-align: left; /* Alineación a la izquierda para mejor legibilidad */
+}
+
+/* Responsividad para móviles */
+@media (max-width: 600px) {
+    nav {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    h1 {
+        font-size: 2
+    }
+}    
