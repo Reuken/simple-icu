@@ -1,6 +1,7 @@
 // models/User.js
 const { query } = require('../config/database');
-const bcrypt = require('bcrypt');
+// Comentamos bcrypt por ahora para desarrollo
+// const bcrypt = require('bcrypt');
 
 class Usuario {
   constructor(data) {
@@ -28,25 +29,34 @@ class Usuario {
     }
   }
 
-  // Autenticar usuario
+  // Autenticar usuario - VERSIÓN CORREGIDA
   static async authenticate(codigo, contrasena) {
     try {
+      console.log(`🔍 Intentando autenticar usuario: ${codigo}`);
+      
       const result = await query(
         'SELECT * FROM usuarios WHERE codigo = $1 AND es_activo = true',
         [codigo]
       );
 
       if (result.rows.length === 0) {
+        console.log(`❌ Usuario no encontrado: ${codigo}`);
         return null;
       }
 
       const usuario = result.rows[0];
-      const isValidPassword = await bcrypt.compare(contrasena, usuario.contrasena);
+      console.log(`✅ Usuario encontrado: ${usuario.nombre} (${usuario.codigo})`);
+      console.log(`🔐 Contraseña en BD: "${usuario.contrasena}", Contraseña ingresada: "${contrasena}"`);
+
+      // Comparación directa para desarrollo (sin bcrypt)
+      const isValidPassword = usuario.contrasena === contrasena;
       
       if (!isValidPassword) {
+        console.log(`❌ Contraseña incorrecta para usuario: ${codigo}`);
         return null;
       }
 
+      console.log(`✅ Autenticación exitosa para: ${usuario.nombre}`);
       return new Usuario(usuario);
     } catch (error) {
       console.error('Error en autenticación:', error);
@@ -138,22 +148,22 @@ class Usuario {
     }
   }
 
-  // Crear nuevo usuario con hash de contraseña
+  // Crear nuevo usuario - VERSIÓN PARA DESARROLLO SIN BCRYPT
   static async create(userData) {
     const client = await require('../config/database').getClient();
     
     try {
       await client.query('BEGIN');
 
-      // Hash de la contraseña
-      const hashedPassword = await bcrypt.hash(userData.contrasena, 10);
+      // Sin hash para desarrollo
+      const plainPassword = userData.contrasena;
 
       // Insertar usuario
       const userResult = await client.query(`
         INSERT INTO usuarios (codigo, nombre, email, contrasena, tipo_usuario)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *
-      `, [userData.codigo, userData.nombre, userData.email, hashedPassword, userData.tipo_usuario]);
+      `, [userData.codigo, userData.nombre, userData.email, plainPassword, userData.tipo_usuario]);
 
       const newUser = userResult.rows[0];
 
@@ -181,7 +191,7 @@ class Usuario {
     }
   }
 
-  // Actualizar usuario
+  // Actualizar usuario - VERSIÓN PARA DESARROLLO SIN BCRYPT
   async update(updateData) {
     const client = await require('../config/database').getClient();
     
@@ -204,9 +214,9 @@ class Usuario {
       }
 
       if (updateData.contrasena) {
-        const hashedPassword = await bcrypt.hash(updateData.contrasena, 10);
+        // Sin hash para desarrollo
         fields.push(`contrasena = $${paramCount}`);
-        values.push(hashedPassword);
+        values.push(updateData.contrasena);
         paramCount++;
       }
 
