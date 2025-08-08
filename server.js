@@ -186,7 +186,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         </div>
       `).join('');
     } else {
-      comisionesHtml = '<p>No está asignado a ninguna comisión actualmente.</p>';
+      comisionesHtml = '<p>No está asignado a ninguna comisión actualmente o es administrativo.</p>';
     }
 
     res.send(`
@@ -204,13 +204,13 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   padding: 0 1rem;
               }
               .welcome-card {
-                  background: linear-gradient(135deg, #007BFF, #0056b3);
+                  background: linear-gradient(135deg, #f8f9fa);
                   color: white;
                   padding: 2rem;
                   border-radius: 12px;
                   margin-bottom: 2rem;
                   text-align: center;
-                  box-shadow: 0 8px 32px rgba(0, 123, 255, 0.3);
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
               }
               .stats-grid {
                   display: grid;
@@ -283,8 +283,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
               }
               .logout-btn {
-                  background-color: #dc3545;
-                  color: white;
+                  background-color: #007BFF;
+                  color: black;
                   padding: 0.5rem 1rem;
                   border: none;
                   border-radius: 4px;
@@ -294,7 +294,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   transition: background-color 0.3s ease;
               }
               .logout-btn:hover {
-                  background-color: #c82333;
+                  background-color: rgba(0, 123, 255, 0.2);
+                  color: white;
               }
               .time-info {
                   font-size: 0.9rem;
@@ -315,7 +316,6 @@ app.get('/dashboard', requireAuth, async (req, res) => {
               <a href="/dashboard" class="logo">ICU Dashboard</a>
               <div class="nav-links">
                   <a href="/dashboard">Dashboard</a>
-                  <a href="/usuarios" title="Ver usuarios">👥 Usuarios</a>
                   <a href="/logout" class="logout-btn">Cerrar Sesión</a>
               </div>
           </nav>
@@ -323,40 +323,19 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <div class="dashboard-container">
               <div class="welcome-card">
                   <h1>¡Bienvenido ${usuario.nombre}!</h1>
-                  <p>Usted es: <strong>${usuario.descripcion_rol}</strong></p>
+                  <p><strong>${usuario.descripcion_rol}</strong></p>
                   <span class="role-badge">${usuario.rol.replace('_', ' ').toUpperCase()}</span>
                   <div class="time-info">
                       <p>Sesión iniciada: ${new Date(usuario.login_time).toLocaleString()}</p>
                   </div>
               </div>
 
-              <div class="stats-grid">
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.total_usuarios}</div>
-                      <div>Usuarios Totales</div>
-                  </div>
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.administrativos}</div>
-                      <div>Administrativos</div>
-                  </div>
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.consejeros}</div>
-                      <div>Consejeros</div>
-                  </div>
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.total_comisiones}</div>
-                      <div>Comisiones</div>
-                  </div>
-              </div>
-
               <div class="user-info">
                   <h3>📋 Información del Usuario</h3>
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                      <div><strong>ID:</strong> ${usuario.id}</div>
                       <div><strong>Código:</strong> ${usuario.codigo}</div>
                       <div><strong>Nombre:</strong> ${usuario.nombre}</div>
-                      <div><strong>Email:</strong> ${usuario.email}</div>
-                      <div><strong>Tipo:</strong> ${usuario.tipo_usuario}</div>
+                      <div><strong>Nivel de cuenta:</strong> ${usuario.tipo_usuario}</div>
                       <div><strong>Rol:</strong> ${usuario.descripcion_rol}</div>
                   </div>
               </div>
@@ -387,10 +366,6 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   <div class="action-card" onclick="alert('Próximamente')">
                       <h4>🎓 Facultades</h4>
                       <p>Información de facultades</p>
-                  </div>
-                  <div class="action-card" onclick="alert('Próximamente')">
-                      <h4>⚙️ Configuración</h4>
-                      <p>Configurar perfil de usuario</p>
                   </div>
               </div>
           </div>
