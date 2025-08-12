@@ -176,29 +176,4 @@ CREATE TRIGGER update_usuarios_updated_at
     BEFORE UPDATE ON usuarios
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Comentarios para documentar las tablas
-COMMENT ON TABLE usuarios IS 'Tabla principal de usuarios del sistema ICU aqui pueden ser o consejeros o administrativos';
-COMMENT ON TABLE administrativos IS 'Información específica de usuarios administrativos con funciones';
-COMMENT ON TABLE consejeros_icu IS 'Información específica de consejeros ICU, aqui se especializan en docentes o estudiantes';
-COMMENT ON TABLE facultades IS 'Todas las facultades de la universidad';
-COMMENT ON TABLE comisiones IS 'Todas las comisiones que conforman el ICU';
-COMMENT ON TABLE usuario_comisiones IS 'Relación entre usuarios y comisiones para uso de analisis';
-COMMENT ON TABLE documentos IS 'Documentos gestionados por el sistema una vez subidos';
-
--- Verificar que los datos se insertaron correctamente
-SELECT 'Verificación de datos insertados:' as mensaje;
-SELECT 'Facultades:' as tabla, COUNT(*) as registros FROM facultades
-UNION ALL
-SELECT 'Comisiones:', COUNT(*) FROM comisiones
-UNION ALL
-SELECT 'Usuarios:', COUNT(*) FROM usuarios
-UNION ALL
-SELECT 'Administrativos:', COUNT(*) FROM administrativos
-UNION ALL
-SELECT 'Consejeros ICU:', COUNT(*) FROM consejeros_icu
-UNION ALL
-SELECT 'Usuario-Comisiones:', COUNT(*) FROM usuario_comisiones
-UNION ALL
-SELECT 'Documentos:', COUNT(*) FROM documentos;
-
 -TODO SE POBLA CORRECTAMENTE-

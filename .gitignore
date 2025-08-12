@@ -5,3 +5,4 @@ echo "node_modules/
 .vscode/
 database/backup/
 tmp/" > .gitignore
+node_modules
