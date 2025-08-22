@@ -254,7 +254,7 @@ class SistemaUsuarios {
       const offset = (page - 1) * limit;
       
       const result = await query(`
-        SELECT u.*, 
+        SELECT u.*, f.nombre AS nombre_facultad, 
                CASE 
                  WHEN u.tipo_usuario = 'administrativo' THEN a.funcion
                  WHEN u.tipo_usuario = 'consejero' THEN 
@@ -336,6 +336,70 @@ class Facultad {
       throw error;
     }
   }
+    // ✅ Obtener miembros de una facultad
+     static async getMiembros(facultadId) {
+        try {
+            const result = await query(`
+                SELECT 
+                    u.id,
+                    u.codigo, 
+                    u.nombre, 
+                    u.email, 
+                    u.tipo_usuario,
+                    c.es_directiva,
+                    c.es_docente,
+                    c.es_estudiante,
+                    f.nombre as nombre_facultad,
+                    u.created_at as fecha_registro
+                FROM usuarios u
+                JOIN consejeros_icu c ON u.id = c.usuario_id
+                JOIN facultades f ON c.facultad_id = f.id
+                WHERE c.facultad_id = $1 
+                    AND u.es_activo = true 
+                    AND u.tipo_usuario = 'consejero'
+                ORDER BY 
+                    c.es_directiva DESC,
+                    c.es_docente DESC, 
+                    c.es_estudiante DESC,
+                    u.nombre
+            `, [facultadId]);
+            
+            return result.rows;
+        } catch (error) {
+            console.error('Error obteniendo miembros de facultad:', error);
+            throw error;
+        }
+    }
+
+    // ✅ Obtener estadísticas de una facultad
+    static async getStats(facultadId) {
+        try {
+            const result = await query(`
+                SELECT 
+                    COUNT(*) as total_miembros,
+                    COUNT(CASE WHEN c.es_directiva THEN 1 END) as directivos,
+                    COUNT(CASE WHEN c.es_docente THEN 1 END) as docentes,
+                    COUNT(CASE WHEN c.es_estudiante THEN 1 END) as estudiantes,
+                    f.nombre as nombre_facultad
+                FROM usuarios u
+                JOIN consejeros_icu c ON u.id = c.usuario_id
+                JOIN facultades f ON c.facultad_id = f.id
+                WHERE c.facultad_id = $1 AND u.es_activo = true
+                GROUP BY f.nombre
+            `, [facultadId]);
+            
+            return result.rows.length > 0 ? result.rows[0] : {
+                total_miembros: 0,
+                directivos: 0,
+                docentes: 0,
+                estudiantes: 0,
+                nombre_facultad: null
+            };
+        } catch (error) {
+            console.error('Error obteniendo estadísticas de facultad:', error);
+            throw error;
+        }
+    } 
 }
 
 class Comision {

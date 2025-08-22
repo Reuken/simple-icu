@@ -1,3 +1,5 @@
+
+
 // Funciones auxiliares para generar páginas HTML
 function generateUsersPage(resultado, facultades, usuario) {
   const permisos = usuario.permisos;
@@ -1620,6 +1622,7 @@ app.get('/health', async (req, res) => {
 // Pagina Usuarios
 
 function generateUsersPage(resultado, facultades, usuario) {
+  
   const usuarios = resultado.rows || [];
   const permisos = usuario.permisos;
   
@@ -1662,6 +1665,7 @@ function generateUsersPage(resultado, facultades, usuario) {
                 align-items: center;
                 border-bottom: 1px solid #eee;
                 transition: background-color 0.3s ease;
+                overflow-wrap: break-word;
             }
             .table-row:hover {
                 background-color: #f8f9fa;
@@ -1837,27 +1841,7 @@ function generateUsersPage(resultado, facultades, usuario) {
         <div class="users-container">
             <div class="welcome-card">
                 <h1>👥 Gestión de Usuarios</h1>
-                <p>Administra usuarios del sistema ICU</p>
-            </div>
-
-            <!-- Estadísticas -->
-            <div class="stats-cards">
-                <div class="stat-card">
-                    <div class="stat-number">${usuarios.length}</div>
-                    <div class="stat-label">Total Usuarios</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${usuarios.filter(u => u.es_activo).length}</div>
-                    <div class="stat-label">Activos</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${usuarios.filter(u => u.tipo_usuario === 'docente').length}</div>
-                    <div class="stat-label">Docentes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number">${usuarios.filter(u => u.tipo_usuario === 'estudiante').length}</div>
-                    <div class="stat-label">Estudiantes</div>
-                </div>
+                <p>Modulo de gestion de consejeros del ICU</p>
             </div>
 
             <!-- Búsqueda y filtros -->
@@ -1874,13 +1858,10 @@ function generateUsersPage(resultado, facultades, usuario) {
                     <option value="activo">Activos</option>
                     <option value="inactivo">Inactivos</option>
                 </select>
-                ${permisos.crear_usuarios ? `
-                <button onclick="openCreateModal()" class="btn btn-success">➕ Nuevo Usuario</button>
-                ` : ''}
             </div>
 
             <!-- Tabla de usuarios -->
-            ${usuarios.length > 0 ? `
+            ${resultado.usuarios.length > 0 ? `
             <div class="users-table">
                 <div class="table-header">
                     <span>👤 Usuario</span>
@@ -1890,26 +1871,22 @@ function generateUsersPage(resultado, facultades, usuario) {
                     <span>📊 Estado</span>
                     <span>⚙️ Acciones</span>
                 </div>
-                ${usuarios.map(u => `
+                ${resultado.usuarios.map(u => `
                 <div class="table-row" data-tipo="${u.tipo_usuario}" data-activo="${u.es_activo}">
                     <div>
-                        <strong>${u.nombre} ${u.apellido}</strong>
-                        <br><small>ID: ${u.id}</small>
+                        <strong>${u.nombre}</strong>
                     </div>
                     <div>${u.email}</div>
                     <div>
                         <span class="user-type type-${u.tipo_usuario}">${u.tipo_usuario}</span>
                     </div>
-                    <div>${u.nombre_facultad || 'Sin asignar'}</div>
+                    <div>${u.nombre_facultad || 'Sin asignar o administrativo'}</div>
                     <div>
                         <span class="status-badge ${u.es_activo ? 'status-active' : 'status-inactive'}">
                             ${u.es_activo ? '✅ Activo' : '❌ Inactivo'}
                         </span>
                     </div>
                     <div>
-                        ${permisos.editar_usuarios ? `
-                        <button onclick="editUser(${u.id})" class="btn btn-info btn-small">✏️</button>
-                        ` : ''}
                         ${permisos.cambiar_estado_usuarios ? `
                         <button onclick="toggleUserStatus(${u.id}, ${u.es_activo})" 
                                 class="btn ${u.es_activo ? 'btn-warning' : 'btn-success'} btn-small">
@@ -1983,6 +1960,14 @@ function generateUsersPage(resultado, facultades, usuario) {
             // Variables globales
             let currentUsers = [];
             
+            const resultado = await SistemaUsuarios.getAllUsers();
+            const usuarios = resultado.usuarios; // Extraer el array
+
+            // Para enlazar usuarios con facultad
+
+            const resultadoFac = await Facultad.getMiembros();
+            const usuariosFac = resultadoFac.usuarios; // Extraer el array
+
             // Inicializar
             document.addEventListener('DOMContentLoaded', function() {
                 currentUsers = ${JSON.stringify(usuarios)};
