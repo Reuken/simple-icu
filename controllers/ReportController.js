@@ -1,5 +1,5 @@
 // controllers/ReportController.js
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 
 class ReportController {
   
@@ -19,152 +19,143 @@ class ReportController {
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <style>
                 .reports-container {
-                    max-width: 1200px;
+                    max-width: 1400px;
                     margin: 2rem auto;
                     padding: 0 1rem;
                 }
-                .reports-grid {
+                .stats-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-                    gap: 2rem;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 1rem;
                     margin-bottom: 2rem;
                 }
-                .report-card {
+                .stat-card {
+                    background: white;
+                    padding: 1.5rem;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    text-align: center;
+                }
+                .stat-number {
+                    font-size: 2.5rem;
+                    font-weight: bold;
+                    color: #007BFF;
+                    margin: 0.5rem 0;
+                }
+                .chart-container {
                     background: white;
                     padding: 2rem;
                     border-radius: 8px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    border-left: 4px solid #007BFF;
+                    margin-bottom: 2rem;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
-                .report-card h3 {
-                    color: #007BFF;
-                    margin-bottom: 1rem;
-                }
-                .chart-container {
+                .chart-wrapper {
                     position: relative;
-                    height: 300px;
+                    height: 400px;
                     margin: 1rem 0;
                 }
-                .stats-summary {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                    gap: 1rem;
-                    margin: 1rem 0;
-                }
-                .stat-item {
-                    text-align: center;
-                    padding: 1rem;
-                    background: #f8f9fa;
+                .nlp-analysis {
+                    background: white;
+                    padding: 2rem;
                     border-radius: 8px;
+                    margin-bottom: 2rem;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
-                .stat-number {
-                    font-size: 2rem;
-                    font-weight: bold;
-                    color: #007BFF;
-                }
-                .stat-label {
-                    font-size: 0.9rem;
-                    color: #6c757d;
-                    margin-top: 0.5rem;
-                }
-                .keywords-cloud {
+                .keyword-cloud {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 0.5rem;
                     margin: 1rem 0;
                 }
                 .keyword-item {
-                    padding: 0.25rem 0.75rem;
-                    background: #007BFF;
+                    padding: 0.5rem 1rem;
+                    background: linear-gradient(45deg, #007BFF, #0056b3);
                     color: white;
                     border-radius: 20px;
-                    font-size: 0.8rem;
-                    position: relative;
+                    font-size: 0.9rem;
+                    font-weight: 500;
                 }
-                .recent-documents {
-                    max-height: 400px;
-                    overflow-y: auto;
+                .topic-analysis {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                    gap: 1rem;
+                    margin: 1rem 0;
                 }
-                .document-item {
-                    padding: 0.75rem;
+                .topic-card {
+                    padding: 1rem;
+                    background: #f8f9fa;
+                    border-radius: 8px;
+                    border-left: 4px solid #28a745;
+                }
+                .recent-docs {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 8px;
+                    margin-bottom: 2rem;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                .doc-item {
+                    padding: 1rem;
                     border-bottom: 1px solid #eee;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                 }
-                .document-item:hover {
-                    background-color: #f8f9fa;
+                .doc-item:last-child {
+                    border-bottom: none;
                 }
-                .document-title {
-                    font-weight: 500;
-                    color: #333;
+                .sentiment-indicator {
+                    display: inline-block;
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    margin-right: 0.5rem;
                 }
-                .document-meta {
-                    font-size: 0.8rem;
-                    color: #6c757d;
+                .sentiment-positive { background-color: #28a745; }
+                .sentiment-neutral { background-color: #ffc107; }
+                .sentiment-negative { background-color: #dc3545; }
+                .loading {
+                    text-align: center;
+                    padding: 2rem;
+                    font-size: 1.2rem;
+                    color: #666;
+                }
+                .error {
+                    background-color: #f8d7da;
+                    border: 1px solid #f5c6cb;
+                    color: #721c24;
+                    padding: 1rem;
+                    border-radius: 4px;
+                    margin: 1rem 0;
+                }
+                .refresh-btn {
+                    background: #007BFF;
+                    color: white;
+                    border: none;
+                    padding: 0.5rem 1rem;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    margin-bottom: 1rem;
+                }
+                .refresh-btn:hover {
+                    background: #0056b3;
                 }
                 .btn {
-                    padding: 0.5rem 1rem;
+                    padding: 0.4rem 0.8rem;
                     border: none;
                     border-radius: 4px;
                     cursor: pointer;
                     text-decoration: none;
                     display: inline-block;
-                    transition: background-color 0.3s ease;
-                }
-                .btn-primary {
-                    background-color: #007BFF;
-                    color: white;
+                    font-size: 0.9rem;
                 }
                 .btn-info {
                     background-color: #17a2b8;
                     color: white;
                 }
-                .btn-success {
-                    background-color: #28a745;
-                    color: white;
-                }
-                .loading {
-                    text-align: center;
-                    padding: 2rem;
-                    color: #6c757d;
-                }
-                .filter-section {
-                    background: white;
-                    padding: 1.5rem;
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-                .filter-controls {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 1rem;
-                    align-items: end;
-                }
-                .form-group label {
-                    display: block;
-                    margin-bottom: 0.5rem;
-                    font-weight: 500;
-                }
-                .form-control {
-                    width: 100%;
-                    padding: 0.5rem;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                }
-                .nlp-insights {
-                    background: linear-gradient(135deg, #28a745, #20c997);
-                    color: white;
-                    padding: 1.5rem;
-                    border-radius: 8px;
-                    margin: 1rem 0;
-                }
-                .insight-item {
-                    margin: 0.5rem 0;
-                    padding: 0.5rem;
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 4px;
+                .btn-sm {
+                    padding: 0.25rem 0.5rem;
+                    font-size: 0.8rem;
                 }
             </style>
         </head>
@@ -173,6 +164,7 @@ class ReportController {
                 <a href="/dashboard" class="logo">ICU Dashboard</a>
                 <div class="nav-links">
                     <a href="/dashboard">Dashboard</a>
+                    <a href="/documentos">📄 Documentos</a>
                     <a href="/reportes" class="active">📊 Reportes</a>
                     <span class="user-info-nav">👤 ${usuario.nombre}</span>
                     <a href="/logout" class="logout-btn">Cerrar Sesión</a>
@@ -181,352 +173,356 @@ class ReportController {
 
             <div class="reports-container">
                 <div class="welcome-card">
-                    <h1>📊 Centro de Reportes y Análisis</h1>
-                    <p>Análisis inteligente de documentos y estadísticas del sistema ICU</p>
+                    <h1>📊 Reportes y Análisis NLP</h1>
+                    <p>Análisis inteligente de documentos del sistema ICU</p>
+                    <button class="refresh-btn" onclick="loadAllReports()">🔄 Actualizar Reportes</button>
                 </div>
 
-                <div class="filter-section">
-                    <h3>🔍 Filtros de Análisis</h3>
-                    <div class="filter-controls">
-                        <div class="form-group">
-                            <label for="fechaDesde">Fecha desde:</label>
-                            <input type="date" id="fechaDesde" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label for="fechaHasta">Fecha hasta:</label>
-                            <input type="date" id="fechaHasta" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label for="comisionFiltro">Comisión:</label>
-                            <select id="comisionFiltro" class="form-control">
-                                <option value="">Todas las comisiones</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <button onclick="actualizarReportes()" class="btn btn-primary">🔄 Actualizar Reportes</button>
-                        </div>
+                <!-- Estadísticas Generales -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-title">📄 Total Documentos</div>
+                        <div class="stat-number" id="totalDocs">-</div>
+                        <div class="stat-subtitle">En el sistema</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">📈 Este Mes</div>
+                        <div class="stat-number" id="docsMes">-</div>
+                        <div class="stat-subtitle">Nuevos documentos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🏷️ Palabras Clave</div>
+                        <div class="stat-number" id="totalKeywords">-</div>
+                        <div class="stat-subtitle">Identificadas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">🎯 Procesados</div>
+                        <div class="stat-number" id="docsConNLP">-</div>
+                        <div class="stat-subtitle">Con análisis NLP</div>
                     </div>
                 </div>
 
-                <div class="reports-grid">
-                    <!-- Resumen General -->
-                    <div class="report-card">
-                        <h3>📈 Resumen General</h3>
-                        <div id="resumenGeneral">
-                            <div class="loading">Cargando estadísticas...</div>
-                        </div>
+                <!-- Análisis Temporal -->
+                <div class="chart-container">
+                    <h3>📈 Análisis Temporal de Documentos</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="temporalChart"></canvas>
                     </div>
+                </div>
 
-                    <!-- Análisis Temporal -->
-                    <div class="report-card">
-                        <h3>📅 Documentos por Mes</h3>
-                        <div class="chart-container">
-                            <canvas id="chartTemporal"></canvas>
-                        </div>
+                <!-- Distribución por Comisiones -->
+                <div class="chart-container">
+                    <h3>🏛️ Distribución por Comisiones</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="comisionesChart"></canvas>
                     </div>
+                </div>
 
-                    <!-- Distribución por Comisiones -->
-                    <div class="report-card">
-                        <h3>🏛️ Documentos por Comisión</h3>
-                        <div class="chart-container">
-                            <canvas id="chartComisiones"></canvas>
-                        </div>
+                <!-- Análisis NLP -->
+                <div class="nlp-analysis">
+                    <h3>🧠 Análisis de Procesamiento de Lenguaje Natural</h3>
+                    
+                    <div id="nlpContent">
+                        <div class="loading">Cargando análisis NLP...</div>
                     </div>
+                </div>
 
-                    <!-- Palabras Clave Más Frecuentes -->
-                    <div class="report-card">
-                        <h3>🏷️ Palabras Clave Populares</h3>
-                        <div id="keywordsSection">
-                            <div class="loading">Analizando palabras clave...</div>
-                        </div>
-                    </div>
-
-                    <!-- Análisis de Sentimiento NLP -->
-                    <div class="report-card">
-                        <h3>🧠 Análisis NLP</h3>
-                        <div id="nlpAnalysis">
-                            <div class="loading">Procesando análisis de contenido...</div>
-                        </div>
-                    </div>
-
-                    <!-- Documentos Recientes -->
-                    <div class="report-card">
-                        <h3>📄 Documentos Recientes</h3>
-                        <div id="recentDocuments" class="recent-documents">
-                            <div class="loading">Cargando documentos...</div>
-                        </div>
+                <!-- Documentos Recientes -->
+                <div class="recent-docs">
+                    <h3>📋 Documentos Recientes con Análisis</h3>
+                    <div id="recentDocs">
+                        <div class="loading">Cargando documentos recientes...</div>
                     </div>
                 </div>
             </div>
 
             <script>
-                let chartTemporal, chartComisiones;
+                let temporalChart = null;
+                let comisionesChart = null;
 
-                // Inicializar página
-                document.addEventListener('DOMContentLoaded', function() {
-                    // Configurar fechas por defecto (últimos 6 meses)
-                    const hoy = new Date();
-                    const hace6Meses = new Date();
-                    hace6Meses.setMonth(hace6Meses.getMonth() - 6);
+                // Cargar todos los reportes
+                async function loadAllReports() {
+                    console.log('🔄 Cargando todos los reportes...');
                     
-                    document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
-                    document.getElementById('fechaDesde').value = hace6Meses.toISOString().split('T')[0];
-
-                    cargarComisiones();
-                    actualizarReportes();
-                });
-
-                // Cargar comisiones para filtro
-                async function cargarComisiones() {
-                    try {
-                        const response = await fetch('/api/comisiones');
-                        const comisiones = await response.json();
-                        const select = document.getElementById('comisionFiltro');
-                        
-                        comisiones.forEach(comision => {
-                            const option = document.createElement('option');
-                            option.value = comision.id;
-                            option.textContent = comision.nombre;
-                            select.appendChild(option);
-                        });
-                    } catch (error) {
-                        console.error('Error cargando comisiones:', error);
-                    }
-                }
-
-                // Actualizar todos los reportes
-                async function actualizarReportes() {
-                    const filtros = {
-                        fechaDesde: document.getElementById('fechaDesde').value,
-                        fechaHasta: document.getElementById('fechaHasta').value,
-                        comisionId: document.getElementById('comisionFiltro').value
-                    };
-
+                    // Ejecutar todas las cargas en paralelo
                     await Promise.all([
-                        cargarResumenGeneral(filtros),
-                        cargarAnalisisTemporal(filtros),
-                        cargarDistribucionComisiones(filtros),
-                        cargarPalabrasClave(filtros),
-                        cargarAnalisisNLP(filtros),
-                        cargarDocumentosRecientes(filtros)
+                        loadResumenGeneral(),
+                        loadAnalisisTemporal(),
+                        loadDistribucionComisiones(),
+                        loadAnalisisNLP(),
+                        loadDocumentosRecientes()
                     ]);
+                    
+                    console.log('✅ Todos los reportes cargados');
                 }
 
                 // Cargar resumen general
-                async function cargarResumenGeneral(filtros = {}) {
+                async function loadResumenGeneral() {
                     try {
-                        const params = new URLSearchParams(filtros);
-                        const response = await fetch(\`/api/reportes/resumen?\${params}\`);
+                        const response = await fetch('/api/reportes/resumen');
                         const data = await response.json();
                         
-                        document.getElementById('resumenGeneral').innerHTML = \`
-                            <div class="stats-summary">
-                                <div class="stat-item">
-                                    <div class="stat-number">\${data.totalDocumentos}</div>
-                                    <div class="stat-label">Total Documentos</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-number">\${data.documentosEsteMes}</div>
-                                    <div class="stat-label">Este Mes</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-number">\${data.promedioPorMes}</div>
-                                    <div class="stat-label">Promedio/Mes</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-number">\${data.comisionesActivas}</div>
-                                    <div class="stat-label">Comisiones Activas</div>
-                                </div>
-                            </div>
-                            <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
-                                <strong>📊 Métricas de Contenido:</strong><br>
-                                • Promedio de palabras por documento: \${data.promedioPalabras}<br>
-                                • Documentos con análisis NLP: \${data.documentosConNLP}<br>
-                                • Total de palabras clave identificadas: \${data.totalPalabrasClave}
-                            </div>
-                        \`;
+                        if (response.ok) {
+                            document.getElementById('totalDocs').textContent = data.total_documentos || '0';
+                            document.getElementById('docsMes').textContent = data.documentos_mes || '0';
+                            document.getElementById('totalKeywords').textContent = data.total_keywords || '0';
+                            document.getElementById('docsConNLP').textContent = data.docs_con_nlp || '0';
+                        } else {
+                            console.error('Error en resumen:', data.error);
+                        }
                     } catch (error) {
-                        document.getElementById('resumenGeneral').innerHTML = '<p>Error cargando resumen</p>';
-                        console.error('Error:', error);
+                        console.error('Error cargando resumen:', error);
                     }
                 }
 
                 // Cargar análisis temporal
-                async function cargarAnalisisTemporal(filtros = {}) {
+                async function loadAnalisisTemporal() {
                     try {
-                        const params = new URLSearchParams(filtros);
-                        const response = await fetch(\`/api/reportes/temporal?\${params}\`);
+                        const response = await fetch('/api/reportes/temporal');
                         const data = await response.json();
                         
-                        const ctx = document.getElementById('chartTemporal').getContext('2d');
-                        
-                        if (chartTemporal) {
-                            chartTemporal.destroy();
+                        if (response.ok && data.length > 0) {
+                            createTemporalChart(data);
+                        } else {
+                            console.warn('No hay datos temporales disponibles');
                         }
-                        
-                        chartTemporal = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: data.labels,
-                                datasets: [{
-                                    label: 'Documentos por Mes',
-                                    data: data.valores,
-                                    borderColor: '#007BFF',
-                                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                                    tension: 0.4,
-                                    fill: true
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                scales: {
-                                    y: {
-                                        beginAtZero: true
-                                    }
-                                }
-                            }
-                        });
                     } catch (error) {
                         console.error('Error cargando análisis temporal:', error);
                     }
                 }
 
                 // Cargar distribución por comisiones
-                async function cargarDistribucionComisiones(filtros = {}) {
+                async function loadDistribucionComisiones() {
                     try {
-                        const params = new URLSearchParams(filtros);
-                        const response = await fetch(\`/api/reportes/comisiones?\${params}\`);
+                        const response = await fetch('/api/reportes/comisiones');
                         const data = await response.json();
                         
-                        const ctx = document.getElementById('chartComisiones').getContext('2d');
-                        
-                        if (chartComisiones) {
-                            chartComisiones.destroy();
+                        if (response.ok && data.length > 0) {
+                            createComisionesChart(data);
+                        } else {
+                            console.warn('No hay datos de comisiones disponibles');
                         }
-                        
-                        chartComisiones = new Chart(ctx, {
-                            type: 'doughnut',
-                            data: {
-                                labels: data.labels,
-                                datasets: [{
-                                    data: data.valores,
-                                    backgroundColor: [
-                                        '#007BFF', '#28a745', '#ffc107', '#dc3545',
-                                        '#17a2b8', '#6f42c1', '#fd7e14', '#20c997',
-                                        '#6c757d', '#343a40'
-                                    ]
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom'
-                                    }
-                                }
-                            }
-                        });
                     } catch (error) {
-                        console.error('Error cargando distribución por comisiones:', error);
-                    }
-                }
-
-                // Cargar palabras clave
-                async function cargarPalabrasClave(filtros = {}) {
-                    try {
-                        const params = new URLSearchParams(filtros);
-                        const response = await fetch(\`/api/reportes/palabras-clave?\${params}\`);
-                        const data = await response.json();
-                        
-                        const keywordsHtml = data.map(item => \`
-                            <span class="keyword-item" style="font-size: \${Math.min(1 + (item.frecuencia / 10), 2)}rem">
-                                \${item.palabra} (\${item.frecuencia})
-                            </span>
-                        \`).join('');
-                        
-                        document.getElementById('keywordsSection').innerHTML = \`
-                            <div class="keywords-cloud">
-                                \${keywordsHtml}
-                            </div>
-                            <p style="margin-top: 1rem; font-size: 0.9rem; color: #6c757d;">
-                                Se muestran las 20 palabras clave más frecuentes. El tamaño indica la frecuencia de aparición.
-                            </p>
-                        \`;
-                    } catch (error) {
-                        document.getElementById('keywordsSection').innerHTML = '<p>Error cargando palabras clave</p>';
-                        console.error('Error:', error);
+                        console.error('Error cargando distribución comisiones:', error);
                     }
                 }
 
                 // Cargar análisis NLP
-                async function cargarAnalisisNLP(filtros = {}) {
+                async function loadAnalisisNLP() {
                     try {
-                        const params = new URLSearchParams(filtros);
-                        const response = await fetch(\`/api/reportes/nlp?\${params}\`);
+                        const response = await fetch('/api/reportes/nlp');
                         const data = await response.json();
                         
-                        document.getElementById('nlpAnalysis').innerHTML = \`
-                            <div class="nlp-insights">
-                                <h5>🧠 Insights de Contenido</h5>
-                                <div class="insight-item">
-                                    <strong>Sentimiento Promedio:</strong> \${data.sentimientoPromedio > 0 ? '😊 Positivo' : data.sentimientoPromedio < 0 ? '😔 Negativo' : '😐 Neutral'} 
-                                    (\${data.sentimientoPromedio.toFixed(2)})
-                                </div>
-                                <div class="insight-item">
-                                    <strong>Complejidad Promedio:</strong> \${data.complejidadPromedio.toFixed(1)}/10
-                                </div>
-                                <div class="insight-item">
-                                    <strong>Longitud Promedio:</strong> \${Math.round(data.longitudPromedio)} palabras
-                                </div>
-                            </div>
-                            
-                            <h5 style="margin-top: 1rem;">📋 Temas Más Frecuentes:</h5>
-                            <div style="margin: 1rem 0;">
-                                \${data.temasFrecuentes.map(tema => \`
-                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; background: #f8f9fa; margin: 0.25rem 0; border-radius: 4px;">
-                                        <span>\${tema.tema.charAt(0).toUpperCase() + tema.tema.slice(1)}</span>
-                                        <strong>\${tema.frecuencia} documentos</strong>
-                                    </div>
-                                \`).join('')}
-                            </div>
-                        \`;
+                        if (response.ok) {
+                            displayNLPAnalysis(data);
+                        } else {
+                            document.getElementById('nlpContent').innerHTML = 
+                                '<div class="error">Error cargando análisis NLP: ' + (data.error || 'Error desconocido') + '</div>';
+                        }
                     } catch (error) {
-                        document.getElementById('nlpAnalysis').innerHTML = '<p>Error cargando análisis NLP</p>';
-                        console.error('Error:', error);
+                        console.error('Error cargando análisis NLP:', error);
+                        document.getElementById('nlpContent').innerHTML = 
+                            '<div class="error">Error de conexión al cargar análisis NLP</div>';
                     }
                 }
 
                 // Cargar documentos recientes
-                async function cargarDocumentosRecientes(filtros = {}) {
+                async function loadDocumentosRecientes() {
                     try {
-                        const params = new URLSearchParams({...filtros, limit: 10});
-                        const response = await fetch(\`/api/reportes/recientes?\${params}\`);
+                        const response = await fetch('/api/reportes/recientes');
                         const data = await response.json();
                         
-                        const documentosHtml = data.map(doc => \`
-                            <div class="document-item">
-                                <div>
-                                    <div class="document-title">\${doc.titulo}</div>
-                                    <div class="document-meta">
-                                        \${doc.remitente || 'Sin remitente'} • 
-                                        \${new Date(doc.fecha_ingreso).toLocaleDateString()} • 
-                                        \${doc.nombre_comision || 'Sin comisión'}
-                                    </div>
-                                </div>
-                                <a href="/api/documentos/\${doc.id}/download" class="btn btn-info btn-sm" target="_blank">
-                                    📥 Ver
-                                </a>
-                            </div>
-                        \`).join('');
-                        
-                        document.getElementById('recentDocuments').innerHTML = documentosHtml || '<p>No hay documentos recientes</p>';
+                        if (response.ok) {
+                            displayRecentDocuments(data);
+                        } else {
+                            document.getElementById('recentDocs').innerHTML = 
+                                '<div class="error">Error cargando documentos recientes</div>';
+                        }
                     } catch (error) {
-                        document.getElementById('recentDocuments').innerHTML = '<p>Error cargando documentos</p>';
-                        console.error('Error:', error);
+                        console.error('Error cargando documentos recientes:', error);
+                        document.getElementById('recentDocs').innerHTML = 
+                            '<div class="error">Error de conexión</div>';
                     }
                 }
+
+                // Crear gráfico temporal
+                function createTemporalChart(data) {
+                    const ctx = document.getElementById('temporalChart').getContext('2d');
+                    
+                    if (temporalChart) {
+                        temporalChart.destroy();
+                    }
+                    
+                    temporalChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.map(d => d.mes),
+                            datasets: [{
+                                label: 'Documentos por Mes',
+                                data: data.map(d => parseInt(d.cantidad)),
+                                borderColor: '#007BFF',
+                                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                                tension: 0.4,
+                                fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Crear gráfico de comisiones
+                function createComisionesChart(data) {
+                    const ctx = document.getElementById('comisionesChart').getContext('2d');
+                    
+                    if (comisionesChart) {
+                        comisionesChart.destroy();
+                    }
+                    
+                    comisionesChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.map(d => d.nombre || 'Sin asignar'),
+                            datasets: [{
+                                data: data.map(d => parseInt(d.cantidad)),
+                                backgroundColor: [
+                                    '#007BFF', '#28a745', '#ffc107', '#dc3545', 
+                                    '#6f42c1', '#fd7e14', '#20c997', '#6c757d'
+                                ]
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Mostrar análisis NLP
+                function displayNLPAnalysis(data) {
+                    let html = '';
+                    
+                    // Palabras clave más frecuentes
+                    if (data.palabras_frecuentes && data.palabras_frecuentes.length > 0) {
+                        html += \`
+                            <h4>🏷️ Palabras Clave Más Frecuentes</h4>
+                            <div class="keyword-cloud">
+                                \${data.palabras_frecuentes.map(keyword => 
+                                    \`<span class="keyword-item">\${keyword.palabra} (\${keyword.frecuencia})</span>\`
+                                ).join('')}
+                            </div>
+                        \`;
+                    }
+                    
+                    // Análisis de temas
+                    if (data.temas_populares && data.temas_populares.length > 0) {
+                        html += \`
+                            <h4>📊 Temas Más Frecuentes</h4>
+                            <div class="topic-analysis">
+                                \${data.temas_populares.map(tema => \`
+                                    <div class="topic-card">
+                                        <h5>\${tema.tema}</h5>
+                                        <p>Documentos: \${tema.frecuencia}</p>
+                                        <small>Palabras relacionadas: \${tema.palabras_ejemplo || 'N/A'}</small>
+                                    </div>
+                                \`).join('')}
+                            </div>
+                        \`;
+                    }
+                    
+                    // Estadísticas de sentimientos
+                    if (data.analisis_sentimientos) {
+                        html += \`
+                            <h4>😊 Análisis de Sentimientos</h4>
+                            <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
+                                <div>Positivos: <strong>\${data.analisis_sentimientos.positivos || 0}</strong></div>
+                                <div>Neutrales: <strong>\${data.analisis_sentimientos.neutrales || 0}</strong></div>
+                                <div>Negativos: <strong>\${data.analisis_sentimientos.negativos || 0}</strong></div>
+                            </div>
+                        \`;
+                    }
+                    
+                    // Complejidad promedio
+                    if (data.complejidad_promedio) {
+                        html += \`
+                            <h4>📈 Complejidad Promedio de Documentos</h4>
+                            <div style="background: #e8f4fd; padding: 1rem; border-radius: 4px;">
+                                <p>Score de complejidad: <strong>\${data.complejidad_promedio.toFixed(2)}/10</strong></p>
+                                <small>Basado en longitud de oraciones y vocabulario utilizado</small>
+                            </div>
+                        \`;
+                    }
+                    
+                    if (!html) {
+                        html = '<div class="error">No hay suficientes datos de análisis NLP disponibles. Asegúrese de que se hayan subido documentos y procesado correctamente.</div>';
+                    }
+                    
+                    document.getElementById('nlpContent').innerHTML = html;
+                }
+
+                // Mostrar documentos recientes
+                function displayRecentDocuments(data) {
+                    if (!data || data.length === 0) {
+                        document.getElementById('recentDocs').innerHTML = '<p>No hay documentos recientes disponibles.</p>';
+                        return;
+                    }
+                    
+                    const html = data.map(doc => {
+                        const fecha = new Date(doc.created_at).toLocaleDateString();
+                        const sentiment = parseFloat(doc.sentiment) || 0;
+                        let sentimentClass = 'sentiment-neutral';
+                        if (sentiment > 0.1) sentimentClass = 'sentiment-positive';
+                        else if (sentiment < -0.1) sentimentClass = 'sentiment-negative';
+                        
+                        return \`
+                            <div class="doc-item">
+                                <div>
+                                    <h5>\${doc.titulo}</h5>
+                                    <p>
+                                        <span class="sentiment-indicator \${sentimentClass}"></span>
+                                        <strong>Remitente:</strong> \${doc.remitente || 'N/A'} | 
+                                        <strong>Fecha:</strong> \${fecha} |
+                                        <strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}
+                                    </p>
+                                    <small>Palabras clave: \${doc.palabras_preview || 'Procesando...'}</small>
+                                </div>
+                                <div>
+                                    <a href="/api/documentos/\${doc.id}/download" class="btn btn-info btn-sm" target="_blank">
+                                        📥 Ver
+                                    </a>
+                                </div>
+                            </div>
+                        \`;
+                    }).join('');
+                    
+                    document.getElementById('recentDocs').innerHTML = html;
+                }
+
+                // Inicializar página
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('🚀 Iniciando carga de reportes...');
+                    loadAllReports();
+                });
             </script>
         </body>
         </html>
@@ -537,370 +533,439 @@ class ReportController {
     }
   }
 
-  // API endpoints para datos de reportes
-  
-  // Resumen general
+  // Obtener resumen general
   static async getResumenGeneral(req, res) {
     try {
-      const { fechaDesde, fechaHasta, comisionId } = req.query;
+      console.log('📊 Obteniendo resumen general...');
       
-      let whereClause = '1=1';
-      let params = [];
-      let paramCount = 0;
+      // Total de documentos
+      const totalResult = await query('SELECT COUNT(*) as total FROM documentos');
+      const total_documentos = parseInt(totalResult.rows[0].total);
 
-      if (fechaDesde) {
-        whereClause += ` AND fecha_ingreso >= ${++paramCount}`;
-        params.push(fechaDesde);
-      }
-      if (fechaHasta) {
-        whereClause += ` AND fecha_ingreso <= ${++paramCount}`;
-        params.push(fechaHasta);
-      }
-      if (comisionId) {
-        whereClause += ` AND comision_id = ${++paramCount}`;
-        params.push(comisionId);
-      }
-
-      const resumenQuery = `
-        SELECT 
-          COUNT(*) as total_documentos,
-          COUNT(CASE WHEN fecha_ingreso >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 END) as documentos_este_mes,
-          AVG(CASE WHEN contenido_texto IS NOT NULL THEN array_length(string_to_array(contenido_texto, ' '), 1) END) as promedio_palabras,
-          COUNT(CASE WHEN palabras_clave IS NOT NULL THEN 1 END) as documentos_con_nlp
+      // Documentos este mes
+      const mesResult = await query(`
+        SELECT COUNT(*) as total 
         FROM documentos 
-        WHERE ${whereClause}
-      `;
+        WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
+      `);
+      const documentos_mes = parseInt(mesResult.rows[0].total);
 
-      const result = await query(resumenQuery, params);
-      const datos = result.rows[0];
-
-      // Calcular promedio por mes
-      const mesesQuery = `
-        SELECT COUNT(DISTINCT DATE_TRUNC('month', fecha_ingreso)) as meses_activos
+      // Documentos con análisis NLP
+      const nlpResult = await query(`
+        SELECT COUNT(*) as total 
         FROM documentos 
-        WHERE ${whereClause}
-      `;
-      const mesesResult = await query(mesesQuery, params);
-      const mesesActivos = parseInt(mesesResult.rows[0].meses_activos) || 1;
+        WHERE palabras_clave IS NOT NULL AND analisis_nlp IS NOT NULL
+      `);
+      const docs_con_nlp = parseInt(nlpResult.rows[0].total);
 
-      // Contar comisiones activas
-      const comisionesQuery = `
-        SELECT COUNT(DISTINCT comision_id) as comisiones_activas
+      // Contar palabras clave únicas
+      const keywordsResult = await query(`
+        SELECT palabras_clave 
         FROM documentos 
-        WHERE ${whereClause} AND comision_id IS NOT NULL
-      `;
-      const comisionesResult = await query(comisionesQuery, params);
-
-      // Contar palabras clave totales
-      const palabrasClaveQuery = `
-        SELECT COUNT(*) as total_palabras_clave
-        FROM (
-          SELECT jsonb_array_elements_text(palabras_clave::jsonb) as palabra
-          FROM documentos 
-          WHERE ${whereClause} AND palabras_clave IS NOT NULL
-        ) palabras
-      `;
-      const palabrasResult = await query(palabrasClaveQuery, params);
-
-      res.json({
-        totalDocumentos: parseInt(datos.total_documentos),
-        documentosEsteMes: parseInt(datos.documentos_este_mes),
-        promedioPorMes: Math.round(parseInt(datos.total_documentos) / mesesActivos),
-        comisionesActivas: parseInt(comisionesResult.rows[0].comisiones_activas),
-        promedioPalabras: Math.round(parseFloat(datos.promedio_palabras) || 0),
-        documentosConNLP: parseInt(datos.documentos_con_nlp),
-        totalPalabrasClave: parseInt(palabrasResult.rows[0].total_palabras_clave || 0)
+        WHERE palabras_clave IS NOT NULL
+      `);
+      
+      let total_keywords = 0;
+      const uniqueKeywords = new Set();
+      
+      keywordsResult.rows.forEach(row => {
+        try {
+          const keywords = JSON.parse(row.palabras_clave);
+          if (Array.isArray(keywords)) {
+            keywords.forEach(k => uniqueKeywords.add(k));
+          }
+        } catch (e) {
+          console.warn('Error parsing keywords:', e);
+        }
       });
+      
+      total_keywords = uniqueKeywords.size;
+
+      const resumen = {
+        total_documentos,
+        documentos_mes,
+        docs_con_nlp,
+        total_keywords
+      };
+
+      console.log('📊 Resumen generado:', resumen);
+      res.json(resumen);
 
     } catch (error) {
-      console.error('Error obteniendo resumen:', error);
-      res.status(500).json({ error: 'Error obteniendo resumen' });
+      console.error('Error obteniendo resumen general:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo resumen general',
+        details: error.message 
+      });
     }
   }
 
-  // Análisis temporal
+  // Obtener análisis temporal
   static async getAnalisisTemporal(req, res) {
     try {
-      const { fechaDesde, fechaHasta, comisionId } = req.query;
+      console.log('📈 Obteniendo análisis temporal...');
       
-      let whereClause = '1=1';
-      let params = [];
-      let paramCount = 0;
-
-      if (fechaDesde) {
-        whereClause += ` AND fecha_ingreso >= ${++paramCount}`;
-        params.push(fechaDesde);
-      }
-      if (fechaHasta) {
-        whereClause += ` AND fecha_ingreso <= ${++paramCount}`;
-        params.push(fechaHasta);
-      }
-      if (comisionId) {
-        whereClause += ` AND comision_id = ${++paramCount}`;
-        params.push(comisionId);
-      }
-
-      const temporalQuery = `
+      const result = await query(`
         SELECT 
-          TO_CHAR(fecha_ingreso, 'YYYY-MM') as mes,
+          TO_CHAR(created_at, 'YYYY-MM') as mes,
           COUNT(*) as cantidad
-        FROM documentos 
-        WHERE ${whereClause}
-        GROUP BY TO_CHAR(fecha_ingreso, 'YYYY-MM')
-        ORDER BY mes
-      `;
+        FROM documentos
+        WHERE created_at >= CURRENT_DATE - INTERVAL '12 months'
+        GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+        ORDER BY mes ASC
+      `);
 
-      const result = await query(temporalQuery, params);
-      
-      res.json({
-        labels: result.rows.map(row => {
-          const [year, month] = row.mes.split('-');
-          const date = new Date(year, month - 1);
-          return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short' });
-        }),
-        valores: result.rows.map(row => parseInt(row.cantidad))
-      });
+      console.log('📈 Datos temporales:', result.rows);
+      res.json(result.rows);
 
     } catch (error) {
       console.error('Error obteniendo análisis temporal:', error);
-      res.status(500).json({ error: 'Error obteniendo análisis temporal' });
+      res.status(500).json({ 
+        error: 'Error obteniendo análisis temporal',
+        details: error.message 
+      });
     }
   }
 
-  // Distribución por comisiones
+  // Obtener distribución por comisiones
   static async getDistribucionComisiones(req, res) {
     try {
-      const { fechaDesde, fechaHasta, comisionId } = req.query;
+      console.log('🏛️ Obteniendo distribución por comisiones...');
       
-      let whereClause = '1=1';
-      let params = [];
-      let paramCount = 0;
-
-      if (fechaDesde) {
-        whereClause += ` AND d.fecha_ingreso >= ${++paramCount}`;
-        params.push(fechaDesde);
-      }
-      if (fechaHasta) {
-        whereClause += ` AND d.fecha_ingreso <= ${++paramCount}`;
-        params.push(fechaHasta);
-      }
-      if (comisionId) {
-        whereClause += ` AND d.comision_id = ${++paramCount}`;
-        params.push(comisionId);
-      }
-
-      const comisionesQuery = `
+      const result = await query(`
         SELECT 
-          COALESCE(c.nombre, 'Sin comisión') as nombre_comision,
+          COALESCE(c.nombre, 'Sin asignar') as nombre,
           COUNT(d.id) as cantidad
         FROM documentos d
         LEFT JOIN comisiones c ON d.comision_id = c.id
-        WHERE ${whereClause}
         GROUP BY c.nombre
         ORDER BY cantidad DESC
-      `;
+      `);
 
-      const result = await query(comisionesQuery, params);
-      
-      res.json({
-        labels: result.rows.map(row => row.nombre_comision),
-        valores: result.rows.map(row => parseInt(row.cantidad))
+      console.log('🏛️ Distribución comisiones:', result.rows);
+      res.json(result.rows);
+
+    } catch (error) {
+      console.error('Error obteniendo distribución comisiones:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo distribución comisiones',
+        details: error.message 
       });
-
-    } catch (error) {
-      console.error('Error obteniendo distribución por comisiones:', error);
-      res.status(500).json({ error: 'Error obteniendo distribución por comisiones' });
     }
   }
 
-  // Palabras clave más frecuentes
-  static async getPalabrasClave(req, res) {
-    try {
-      const { fechaDesde, fechaHasta, comisionId } = req.query;
-      
-      let whereClause = '1=1';
-      let params = [];
-      let paramCount = 0;
-
-      if (fechaDesde) {
-        whereClause += ` AND fecha_ingreso >= ${++paramCount}`;
-        params.push(fechaDesde);
-      }
-      if (fechaHasta) {
-        whereClause += ` AND fecha_ingreso <= ${++paramCount}`;
-        params.push(fechaHasta);
-      }
-      if (comisionId) {
-        whereClause += ` AND comision_id = ${++paramCount}`;
-        params.push(comisionId);
-      }
-
-      const palabrasQuery = `
-        SELECT 
-          palabra,
-          COUNT(*) as frecuencia
-        FROM (
-          SELECT jsonb_array_elements_text(palabras_clave::jsonb) as palabra
-          FROM documentos 
-          WHERE ${whereClause} AND palabras_clave IS NOT NULL
-        ) palabras
-        GROUP BY palabra
-        ORDER BY frecuencia DESC
-        LIMIT 20
-      `;
-
-      const result = await query(palabrasQuery, params);
-      
-      res.json(result.rows.map(row => ({
-        palabra: row.palabra,
-        frecuencia: parseInt(row.frecuencia)
-      })));
-
-    } catch (error) {
-      console.error('Error obteniendo palabras clave:', error);
-      res.status(500).json({ error: 'Error obteniendo palabras clave' });
-    }
-  }
-
-  // Análisis NLP
+  // Obtener análisis NLP detallado
   static async getAnalisisNLP(req, res) {
     try {
-      const { fechaDesde, fechaHasta, comisionId } = req.query;
+      console.log('🧠 Obteniendo análisis NLP...');
       
-      let whereClause = '1=1';
-      let params = [];
-      let paramCount = 0;
-
-      if (fechaDesde) {
-        whereClause += ` AND fecha_ingreso >= ${++paramCount}`;
-        params.push(fechaDesde);
-      }
-      if (fechaHasta) {
-        whereClause += ` AND fecha_ingreso <= ${++paramCount}`;
-        params.push(fechaHasta);
-      }
-      if (comisionId) {
-        whereClause += ` AND comision_id = ${++paramCount}`;
-        params.push(comisionId);
-      }
-
-      // Análisis de sentimiento y complejidad
-      const analisisQuery = `
-        SELECT 
-          AVG((analisis_nlp->>'sentiment')::numeric) as sentimiento_promedio,
-          AVG((analisis_nlp->'complejidad'->>'score')::numeric) as complejidad_promedio,
-          AVG((analisis_nlp->>'longitud_palabras')::numeric) as longitud_promedio
+      // Obtener documentos con análisis NLP
+      const documentosResult = await query(`
+        SELECT palabras_clave, analisis_nlp
         FROM documentos 
-        WHERE ${whereClause} AND analisis_nlp IS NOT NULL
-      `;
+        WHERE palabras_clave IS NOT NULL 
+        AND analisis_nlp IS NOT NULL
+      `);
 
-      const analisisResult = await query(analisisQuery, params);
+      console.log(`🧠 Documentos con NLP encontrados: ${documentosResult.rows.length}`);
 
-      // Temas más frecuentes
-      const temasQuery = `
-        SELECT 
-          tema->>'tema' as tema,
-          COUNT(*) as frecuencia
-        FROM (
-          SELECT jsonb_array_elements(analisis_nlp->'temas_detectados') as tema
-          FROM documentos 
-          WHERE ${whereClause} AND analisis_nlp IS NOT NULL
-        ) temas
-        GROUP BY tema->>'tema'
-        ORDER BY frecuencia DESC
-        LIMIT 10
-      `;
+      if (documentosResult.rows.length === 0) {
+        return res.json({
+          palabras_frecuentes: [],
+          temas_populares: [],
+          analisis_sentimientos: { positivos: 0, neutrales: 0, negativos: 0 },
+          complejidad_promedio: 0
+        });
+      }
 
-      const temasResult = await query(temasQuery, params);
+      // Análisis de palabras clave
+      const keywordFreq = {};
+      const temaFreq = {};
+      let sentimientos = { positivos: 0, neutrales: 0, negativos: 0 };
+      let totalComplejidad = 0;
+      let validComplexity = 0;
 
-      const datos = analisisResult.rows[0];
-      
-      res.json({
-        sentimientoPromedio: parseFloat(datos.sentimiento_promedio) || 0,
-        complejidadPromedio: parseFloat(datos.complejidad_promedio) || 0,
-        longitudPromedio: parseFloat(datos.longitud_promedio) || 0,
-        temasFrecuentes: temasResult.rows.map(row => ({
-          tema: row.tema,
-          frecuencia: parseInt(row.frecuencia)
-        }))
+      documentosResult.rows.forEach(row => {
+        try {
+          // Procesar palabras clave
+          const keywords = JSON.parse(row.palabras_clave);
+          if (Array.isArray(keywords)) {
+            keywords.forEach(keyword => {
+              keywordFreq[keyword] = (keywordFreq[keyword] || 0) + 1;
+            });
+          }
+
+          // Procesar análisis NLP
+          const analisis = JSON.parse(row.analisis_nlp);
+          
+          // Análisis de sentimientos
+          if (analisis.sentiment !== undefined) {
+            const sentiment = parseFloat(analisis.sentiment);
+            if (sentiment > 0.1) sentimientos.positivos++;
+            else if (sentiment < -0.1) sentimientos.negativos++;
+            else sentimientos.neutrales++;
+          }
+
+          // Complejidad
+          if (analisis.complejidad && analisis.complejidad.score !== undefined) {
+            totalComplejidad += parseFloat(analisis.complejidad.score);
+            validComplexity++;
+          }
+
+          // Temas detectados
+          if (analisis.temas_detectados && Array.isArray(analisis.temas_detectados)) {
+            analisis.temas_detectados.forEach(tema => {
+              const temaKey = tema.tema || 'otros';
+              temaFreq[temaKey] = (temaFreq[temaKey] || 0) + 1;
+            });
+          }
+
+        } catch (error) {
+          console.warn('Error procesando documento NLP:', error);
+        }
       });
+
+      // Preparar palabras más frecuentes (top 15)
+      const palabras_frecuentes = Object.entries(keywordFreq)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 15)
+        .map(([palabra, frecuencia]) => ({ palabra, frecuencia }));
+
+      // Preparar temas más populares
+      const temas_populares = Object.entries(temaFreq)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 8)
+        .map(([tema, frecuencia]) => ({ tema, frecuencia }));
+
+      // Complejidad promedio
+      const complejidad_promedio = validComplexity > 0 ? totalComplejidad / validComplexity : 0;
+
+      const analisisCompleto = {
+        palabras_frecuentes,
+        temas_populares,
+        analisis_sentimientos: sentimientos,
+        complejidad_promedio: Math.round(complejidad_promedio * 100) / 100
+      };
+
+      console.log('🧠 Análisis NLP generado:', {
+        palabras_count: palabras_frecuentes.length,
+        temas_count: temas_populares.length,
+        sentimientos,
+        complejidad_promedio: analisisCompleto.complejidad_promedio
+      });
+
+      res.json(analisisCompleto);
 
     } catch (error) {
       console.error('Error obteniendo análisis NLP:', error);
-      res.status(500).json({ error: 'Error obteniendo análisis NLP' });
+      res.status(500).json({ 
+        error: 'Error obteniendo análisis NLP',
+        details: error.message 
+      });
     }
   }
 
-  // Documentos recientes
+  // Obtener documentos recientes
   static async getDocumentosRecientes(req, res) {
     try {
-      const { fechaDesde, fechaHasta, comisionId, limit = 10 } = req.query;
+      console.log('📋 Obteniendo documentos recientes...');
       
-      let whereClause = '1=1';
-      let params = [];
-      let paramCount = 0;
-
-      if (fechaDesde) {
-        whereClause += ` AND d.fecha_ingreso >= ${++paramCount}`;
-        params.push(fechaDesde);
-      }
-      if (fechaHasta) {
-        whereClause += ` AND d.fecha_ingreso <= ${++paramCount}`;
-        params.push(fechaHasta);
-      }
-      if (comisionId) {
-        whereClause += ` AND d.comision_id = ${++paramCount}`;
-        params.push(comisionId);
-      }
-
-      params.push(parseInt(limit));
-      
-      const documentosQuery = `
+      const result = await query(`
         SELECT 
-          d.id, d.titulo, d.remitente, d.fecha_ingreso,
+          d.id,
+          d.titulo,
+          d.remitente,
+          d.created_at,
+          d.palabras_clave,
+          d.analisis_nlp,
+          c.nombre as nombre_comision
+        FROM documentos d
+        LEFT JOIN comisiones c ON d.comision_id = c.id
+        ORDER BY d.created_at DESC
+        LIMIT 10
+      `);
+
+      // Procesar datos para incluir información de NLP
+      const documentosConNLP = result.rows.map(doc => {
+        let sentiment = 0;
+        let palabras_preview = 'Sin procesar';
+
+        try {
+          // Extraer palabras clave para preview
+          if (doc.palabras_clave) {
+            const keywords = JSON.parse(doc.palabras_clave);
+            if (Array.isArray(keywords) && keywords.length > 0) {
+              palabras_preview = keywords.slice(0, 3).join(', ');
+              if (keywords.length > 3) palabras_preview += '...';
+            }
+          }
+
+          // Extraer sentiment
+          if (doc.analisis_nlp) {
+            const analisis = JSON.parse(doc.analisis_nlp);
+            sentiment = analisis.sentiment || 0;
+          }
+        } catch (error) {
+          console.warn('Error procesando NLP para documento:', doc.id, error);
+        }
+
+        return {
+          ...doc,
+          sentiment,
+          palabras_preview
+        };
+      });
+
+      console.log(`📋 Documentos recientes procesados: ${documentosConNLP.length}`);
+      res.json(documentosConNLP);
+
+    } catch (error) {
+      console.error('Error obteniendo documentos recientes:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo documentos recientes',
+        details: error.message 
+      });
+    }
+  }
+
+  // Obtener reporte detallado de documentos
+  static async getDocumentosReport(req, res) {
+    try {
+      console.log('📄 Obteniendo reporte detallado de documentos...');
+      
+      const result = await query(`
+        SELECT 
+          d.id,
+          d.titulo,
+          d.remitente,
+          d.fecha_ingreso,
+          d.created_at,
+          d.palabras_clave,
+          d.analisis_nlp,
+          d.recomendaciones,
           c.nombre as nombre_comision,
           u.nombre as nombre_usuario
         FROM documentos d
         LEFT JOIN comisiones c ON d.comision_id = c.id
         LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
-        WHERE ${whereClause}
         ORDER BY d.created_at DESC
-        LIMIT ${++paramCount}
-      `;
+      `);
 
-      const result = await query(documentosQuery, params);
-      res.json(result.rows);
+      // Procesar documentos con análisis completo
+      const documentosCompletos = result.rows.map(doc => {
+        let analisisCompleto = {
+          palabras_clave: [],
+          sentiment: 0,
+          complejidad: { score: 0 },
+          temas_detectados: [],
+          longitud_palabras: 0,
+          recomendaciones: []
+        };
+
+        try {
+          // Procesar palabras clave
+          if (doc.palabras_clave) {
+            analisisCompleto.palabras_clave = JSON.parse(doc.palabras_clave);
+          }
+
+          // Procesar análisis NLP
+          if (doc.analisis_nlp) {
+            const nlp = JSON.parse(doc.analisis_nlp);
+            analisisCompleto = { ...analisisCompleto, ...nlp };
+          }
+
+          // Procesar recomendaciones
+          if (doc.recomendaciones) {
+            analisisCompleto.recomendaciones = JSON.parse(doc.recomendaciones);
+          }
+        } catch (error) {
+          console.warn('Error procesando análisis completo para documento:', doc.id, error);
+        }
+
+        return {
+          id: doc.id,
+          titulo: doc.titulo,
+          remitente: doc.remitente,
+          fecha_ingreso: doc.fecha_ingreso,
+          created_at: doc.created_at,
+          nombre_comision: doc.nombre_comision,
+          nombre_usuario: doc.nombre_usuario,
+          analisis: analisisCompleto
+        };
+      });
+
+      console.log(`📄 Reporte completo generado: ${documentosCompletos.length} documentos`);
+      res.json(documentosCompletos);
 
     } catch (error) {
-      console.error('Error obteniendo documentos recientes:', error);
-      res.status(500).json({ error: 'Error obteniendo documentos recientes' });
+      console.error('Error obteniendo reporte de documentos:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo reporte de documentos',
+        details: error.message 
+      });
     }
   }
 
-  // Endpoint principal para reportes de documentos (usado desde el servidor principal)
-  static async getDocumentosReport(req, res) {
+  // Obtener palabras clave más frecuentes
+  static async getPalabrasClave(req, res) {
     try {
-      const tipo = req.query.tipo || 'resumen';
+      console.log('🏷️ Obteniendo análisis de palabras clave...');
       
-      switch (tipo) {
-        case 'resumen':
-          return await ReportController.getResumenGeneral(req, res);
-        case 'temporal':
-          return await ReportController.getAnalisisTemporal(req, res);
-        case 'comisiones':
-          return await ReportController.getDistribucionComisiones(req, res);
-        case 'palabras-clave':
-          return await ReportController.getPalabrasClave(req, res);
-        case 'nlp':
-          return await ReportController.getAnalisisNLP(req, res);
-        case 'recientes':
-          return await ReportController.getDocumentosRecientes(req, res);
-        default:
-          res.status(400).json({ error: 'Tipo de reporte no válido' });
-      }
+      const result = await query(`
+        SELECT palabras_clave 
+        FROM documentos 
+        WHERE palabras_clave IS NOT NULL
+      `);
+
+      const keywordStats = {};
+      let totalDocuments = 0;
+
+      result.rows.forEach(row => {
+        try {
+          const keywords = JSON.parse(row.palabras_clave);
+          if (Array.isArray(keywords)) {
+            totalDocuments++;
+            keywords.forEach(keyword => {
+              if (!keywordStats[keyword]) {
+                keywordStats[keyword] = {
+                  palabra: keyword,
+                  frecuencia: 0,
+                  documentos: new Set()
+                };
+              }
+              keywordStats[keyword].frecuencia++;
+              keywordStats[keyword].documentos.add(totalDocuments);
+            });
+          }
+        } catch (error) {
+          console.warn('Error procesando palabras clave:', error);
+        }
+      });
+
+      // Convertir a array y calcular estadísticas adicionales
+      const palabrasClaveArray = Object.values(keywordStats).map(stat => ({
+        palabra: stat.palabra,
+        frecuencia: stat.frecuencia,
+        documentos_count: stat.documentos.size,
+        porcentaje: totalDocuments > 0 ? Math.round((stat.documentos.size / totalDocuments) * 100) : 0
+      }));
+
+      // Ordenar por frecuencia
+      palabrasClaveArray.sort((a, b) => b.frecuencia - a.frecuencia);
+
+      console.log(`🏷️ Análisis completado: ${palabrasClaveArray.length} palabras únicas`);
+      res.json({
+        palabras_clave: palabrasClaveArray.slice(0, 50), // Top 50
+        total_documentos: totalDocuments,
+        total_palabras_unicas: palabrasClaveArray.length
+      });
+
     } catch (error) {
-      console.error('Error en reporte de documentos:', error);
-      res.status(500).json({ error: 'Error interno del servidor' });
+      console.error('Error obteniendo palabras clave:', error);
+      res.status(500).json({ 
+        error: 'Error obteniendo palabras clave',
+        details: error.message 
+      });
     }
   }
 }

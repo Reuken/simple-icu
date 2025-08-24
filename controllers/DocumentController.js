@@ -233,139 +233,245 @@ class DocumentController {
                     }
                 }
 
-                // Subir documento
-                document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    
-                    const formData = new FormData(this);
-                    const submitBtn = this.querySelector('button[type="submit"]');
-                    
-                    submitBtn.disabled = true;
-                    submitBtn.textContent = '📤 Subiendo...';
-                    
-                    try {
-                        const response = await fetch('/api/documentos', {
-                            method: 'POST',
-                            body: formData
-                        });
-                        
-                        const result = await response.json();
-                        
-                        if (response.ok) {
-                            showAlert('✅ Documento subido exitosamente. Procesando análisis NLP...', 'success');
-                            this.reset();
-                            document.getElementById('fileName').textContent = '';
-                            setTimeout(() => loadDocuments(), 2000);
-                        } else {
-                            showAlert('❌ Error: ' + result.error, 'error');
-                        }
-                    } catch (error) {
-                        showAlert('❌ Error de conexión: ' + error.message, 'error');
-                    } finally {
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = '📤 Subir Documento';
-                    }
-                });
+              // Subir documento
+              document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
+                  e.preventDefault();
+                  
+                  const formData = new FormData(this);
+                  const submitBtn = this.querySelector('button[type="submit"]');
+                  
+                  // Validar que se seleccionó un archivo
+                  if (!formData.get('archivo') || formData.get('archivo').size === 0) {
+                      showAlert('⚠️ Por favor selecciona un archivo PDF', 'error');
+                      return;
+                  }
+                  
+                  submitBtn.disabled = true;
+                  submitBtn.textContent = '📤 Subiendo...';
+                  
+                  try {
+                      const response = await fetch('/api/documentos', {
+                          method: 'POST',
+                          body: formData
+                      });
+                      
+                      const result = await response.json();
+                      
+                      if (response.ok) {
+                          showAlert('✅ Documento subido exitosamente. Procesando análisis...', 'success');
+                          this.reset();
+                          document.getElementById('fileName').textContent = '';
+                          setTimeout(() => loadDocuments(), 2000);
+                      } else {
+                          showAlert('❌ Error: ' + (result.error || result.details || 'Error desconocido'), 'error');
+                      }
+                  } catch (error) {
+                      console.error('Error subiendo documento:', error);
+                      showAlert('❌ Error de conexión: ' + error.message, 'error');
+                  } finally {
+                      submitBtn.disabled = false;
+                      submitBtn.textContent = '📤 Subir Documento';
+                  }
+              });
 
-                // Cargar documentos
-                async function loadDocuments() {
-                    const container = document.getElementById('documentsContainer');
-                    container.innerHTML = '<div class="loading">Cargando documentos...</div>';
-                    
-                    try {
-                        const response = await fetch('/api/documentos');
-                        const documentos = await response.json();
-                        
-                        if (documentos.length === 0) {
-                            container.innerHTML = '<p>No hay documentos disponibles.</p>';
-                            return;
-                        }
-                        
-                        container.innerHTML = documentos.map(doc => generateDocumentCard(doc)).join('');
-                    } catch (error) {
-                        container.innerHTML = '<div class="alert alert-error">Error cargando documentos: ' + error.message + '</div>';
-                    }
-                }
+              // Cargar documentos con manejo mejorado de errores
+              async function loadDocuments() {
+                  const container = document.getElementById('documentsContainer');
+                  container.innerHTML = '<div class="loading">Cargando documentos...</div>';
+                  
+                  try {
+                      console.log('Cargando documentos...');
+                      const response = await fetch('/api/documentos');
+                      
+                      console.log('Response status:', response.status);
+                      console.log('Response headers:', response.headers.get('content-type'));
+                      
+                      if (!response.ok) {
+                          throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+                      }
+                      
+                      const contentType = response.headers.get('content-type');
+                      if (!contentType || !contentType.includes('application/json')) {
+                          const text = await response.text();
+                          console.error('Respuesta no JSON:', text.substring(0, 200));
+                          throw new Error('La respuesta del servidor no es JSON válido');
+                      }
+                      
+                      const documentos = await response.json();
+                      console.log('Documentos recibidos:', documentos);
+                      
+                      if (!Array.isArray(documentos)) {
+                          console.error('Respuesta no es array:', typeof documentos, documentos);
+                          throw new Error('La respuesta no es un array válido');
+                      }
+                      
+                      if (documentos.length === 0) {
+                          container.innerHTML = \`
+                              <div class="no-data">
+                                  <h3>📄 No hay documentos disponibles</h3>
+                                  <p>Los documentos aparecerán aquí una vez que sean subidos.</p>
+                                  \${${permisos.subir_documentos} ? '<p><small>Usa el formulario de arriba para subir tu primer documento.</small></p>' : ''}
+                              </div>
+                          \`;
+                          return;
+                      }
+                      
+                      container.innerHTML = documentos.map(doc => generateDocumentCard(doc)).join('');
+                      console.log('Documentos renderizados exitosamente');
+                      
+                  } catch (error) {
+                      console.error('Error cargando documentos:', error);
+                      container.innerHTML = \`
+                          <div class="alert alert-error">
+                              <h4>❌ Error cargando documentos</h4>
+                              <p><strong>Detalle:</strong> \${error.message}</p>
+                              <button onclick="loadDocuments()" class="btn btn-primary" style="margin-top: 1rem;">
+                                  🔄 Reintentar
+                              </button>
+                          </div>
+                      \`;
+                  }
+              }
 
-                // Generar tarjeta de documento
-                function generateDocumentCard(doc) {
-                    const fecha = new Date(doc.fecha_ingreso).toLocaleDateString();
-                    const keywords = doc.palabras_clave ? JSON.parse(doc.palabras_clave) : [];
-                    const recomendaciones = doc.recomendaciones ? JSON.parse(doc.recomendaciones) : [];
-                    
-                    return \`
-                        <div class="document-card">
-                            <div class="document-meta">
-                                <div>
-                                    <h4>\${doc.titulo}</h4>
-                                    <p><strong>Remitente:</strong> \${doc.remitente || 'No especificado'}</p>
-                                    <p><strong>Fecha:</strong> \${fecha}</p>
-                                    <p><strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}</p>
-                                </div>
-                                <div>
-                                    <a href="/api/documentos/\${doc.id}/download" class="btn btn-info" target="_blank">
-                                        📥 Descargar
-                                    </a>
-                                </div>
-                            </div>
-                            
-                            \${keywords.length > 0 ? \`
-                            <div class="keywords-section">
-                                <h5>🏷️ Palabras Clave Identificadas:</h5>
-                                \${keywords.map(keyword => \`<span class="keyword-tag">\${keyword}</span>\`).join('')}
-                            </div>
-                            \` : ''}
-                            
-                            \${recomendaciones.length > 0 ? \`
-                            <div class="recommendations">
-                                <h5>💡 Documentos Relacionados:</h5>
-                                <ul>
-                                    \${recomendaciones.map(rec => \`<li><a href="/api/documentos/\${rec.id}/download" target="_blank">\${rec.titulo}</a> (Similaridad: \${Math.round(rec.similarity * 100)}%)</li>\`).join('')}
-                                </ul>
-                            </div>
-                            \` : ''}
-                        </div>
-                    \`;
-                }
+              // Generar tarjeta de documento con manejo seguro de JSON
+              function generateDocumentCard(doc) {
+                  try {
+                      const fecha = new Date(doc.fecha_ingreso).toLocaleDateString('es-ES');
+                      
+                      // Manejo seguro de campos JSON
+                      let keywords = [];
+                      let recomendaciones = [];
+                      
+                      try {
+                          if (doc.palabras_clave) {
+                              keywords = typeof doc.palabras_clave === 'string' 
+                                  ? JSON.parse(doc.palabras_clave) 
+                                  : doc.palabras_clave;
+                          }
+                      } catch (e) {
+                          console.warn('Error parseando palabras_clave para doc', doc.id, ':', e);
+                      }
+                      
+                      try {
+                          if (doc.recomendaciones) {
+                              recomendaciones = typeof doc.recomendaciones === 'string' 
+                                  ? JSON.parse(doc.recomendaciones) 
+                                  : doc.recomendaciones;
+                          }
+                      } catch (e) {
+                          console.warn('Error parseando recomendaciones para doc', doc.id, ':', e);
+                      }
+                      
+                      return \`
+                          <div class="document-card">
+                              <div class="document-meta">
+                                  <div>
+                                      <h4>\${doc.titulo}</h4>
+                                      <p><strong>Remitente:</strong> \${doc.remitente || 'No especificado'}</p>
+                                      <p><strong>Fecha:</strong> \${fecha}</p>
+                                      <p><strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}</p>
+                                      <p><strong>Subido por:</strong> \${doc.nombre_usuario || 'Usuario desconocido'}</p>
+                                  </div>
+                                  <div>
+                                      \${doc.archivo_path ? \`
+                                      <a href="/api/documentos/\${doc.id}/download" class="btn btn-info" target="_blank">
+                                          📥 Descargar
+                                      </a>
+                                      \` : \`
+                                      <span class="btn" style="background: #ccc; color: #666;">📄 Sin archivo</span>
+                                      \`}
+                                  </div>
+                              </div>
+                              
+                              \${Array.isArray(keywords) && keywords.length > 0 ? \`
+                              <div class="keywords-section">
+                                  <h5>🏷️ Palabras Clave Identificadas:</h5>
+                                  \${keywords.map(keyword => \`<span class="keyword-tag">\${keyword}</span>\`).join('')}
+                              </div>
+                              \` : ''}
+                              
+                              \${Array.isArray(recomendaciones) && recomendaciones.length > 0 ? \`
+                              <div class="recommendations">
+                                  <h5>💡 Documentos Relacionados:</h5>
+                                  <ul>
+                                      \${recomendaciones.map(rec => \`
+                                          <li>
+                                              <a href="/api/documentos/\${rec.id}/download" target="_blank">
+                                                  \${rec.titulo}
+                                              </a> 
+                                              (Similaridad: \${Math.round(rec.similarity * 100)}%)
+                                          </li>
+                                      \`).join('')}
+                                  </ul>
+                              </div>
+                              \` : ''}
+                              
+                              \${!doc.contenido_texto ? \`
+                              <div style="margin-top: 1rem; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
+                                  ⚠️ Este documento no ha sido procesado con análisis NLP
+                              </div>
+                              \` : ''}
+                          </div>
+                      \`;
+                  } catch (error) {
+                      console.error('Error generando card para documento', doc?.id, ':', error);
+                      return \`
+                          <div class="document-card" style="border-left-color: #dc3545;">
+                              <p>❌ Error mostrando documento: \${doc?.titulo || 'Sin título'}</p>
+                              <small>ID: \${doc?.id}</small>
+                          </div>
+                      \`;
+                  }
+              }
 
-                // Mostrar alertas
-                function showAlert(message, type) {
-                    const container = document.getElementById('alertContainer');
-                    const alert = document.createElement('div');
-                    alert.className = \`alert alert-\${type}\`;
-                    alert.innerHTML = message;
-                    
-                    container.appendChild(alert);
-                    
-                    setTimeout(() => {
-                        alert.remove();
-                    }, 5000);
-                }
+              // Mostrar alertas
+              function showAlert(message, type) {
+                  const container = document.getElementById('alertContainer');
+                  const alert = document.createElement('div');
+                  alert.className = \`alert alert-\${type}\`;
+                  alert.innerHTML = message;
+                  
+                  container.appendChild(alert);
+                  
+                  // Auto-remover después de 5 segundos
+                  setTimeout(() => {
+                      if (alert.parentNode) {
+                          alert.remove();
+                      }
+                  }, 5000);
+              }
 
-                // Búsqueda en tiempo real
-                document.getElementById('searchInput').addEventListener('input', function(e) {
-                    const searchTerm = e.target.value.toLowerCase();
-                    const cards = document.querySelectorAll('.document-card');
-                    
-                    cards.forEach(card => {
-                        const text = card.textContent.toLowerCase();
-                        if (text.includes(searchTerm)) {
-                            card.style.display = 'block';
-                        } else {
-                            card.style.display = 'none';
-                        }
-                    });
-                });
+              // Búsqueda en tiempo real
+              document.getElementById('searchInput').addEventListener('input', function(e) {
+                  const searchTerm = e.target.value.toLowerCase();
+                  const cards = document.querySelectorAll('.document-card');
+                  
+                  cards.forEach(card => {
+                      const text = card.textContent.toLowerCase();
+                      if (text.includes(searchTerm)) {
+                          card.style.display = 'block';
+                      } else {
+                          card.style.display = 'none';
+                      }
+                  });
+              });
 
-                // Inicializar página
-                document.addEventListener('DOMContentLoaded', function() {
-                    ${permisos.subir_documentos ? 'loadComisiones();' : ''}
-                    loadDocuments();
-                });
-            </script>
-        </body>
-        </html>
-      `);
+              // Inicializar página
+              document.addEventListener('DOMContentLoaded', function() {
+                  console.log('DOM cargado, inicializando...');
+                  
+                  // Solo cargar comisiones si el usuario puede subir documentos
+                  ${permisos.subir_documentos ? 'loadComisiones();' : ''}
+                  
+                  // Siempre cargar documentos
+                  loadDocuments();
+                  
+                  console.log('Inicialización completada');
+              });
+          </script>
+      </body>
+      </html>
+    `);
     } catch (error) {
       console.error('Error generando página de documentos:', error);
       res.status(500).send('Error interno del servidor');
@@ -373,22 +479,33 @@ class DocumentController {
   }
 
   // Obtener lista de documentos
-  static async getDocumentos(req, res) {
-    try {
-      const result = await query(`
-        SELECT d.*, c.nombre as nombre_comision, u.nombre as nombre_usuario
-        FROM documentos d
-        LEFT JOIN comisiones c ON d.comision_id = c.id
-        LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
-        ORDER BY d.created_at DESC
-      `);
+static async getDocumentos(req, res) {
+  try {
+    const result = await query(`
+      SELECT 
+        d.*,
+        c.nombre as nombre_comision, 
+        u.nombre as nombre_usuario
+      FROM documentos d
+      LEFT JOIN comisiones c ON d.comision_id = c.id
+      LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
+      ORDER BY d.created_at DESC
+    `);
 
-      res.json(result.rows);
-    } catch (error) {
-      console.error('Error obteniendo documentos:', error);
-      res.status(500).json({ error: 'Error obteniendo documentos' });
-    }
+    // Procesar resultados para manejar campos JSON nulos
+    const documentosProcessed = result.rows.map(doc => ({
+      ...doc,
+      palabras_clave: doc.palabras_clave || '[]',
+      analisis_nlp: doc.analisis_nlp || '{}',
+      recomendaciones: doc.recomendaciones || '[]'
+    }));
+
+    res.json(documentosProcessed);
+  } catch (error) {
+    console.error('Error obteniendo documentos:', error);
+    res.status(500).json({ error: 'Error obteniendo documentos' });
   }
+}
 
   // Subir documento con análisis NLP
   static async uploadDocumento(req, res) {
