@@ -4,6 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const pdf = require('pdf-parse');
 const natural = require('natural');
+const { PorterStemmerEs } = require('natural');
+const Tesseract = require('tesseract.js');
+const pdf2pic = require('pdf2pic');
+const sharp = require('sharp');
+const sentimentAnalyzer = new natural.SentimentAnalyzer('Spanish', PorterStemmerEs, 'afinn');
 
 // Configuración de NLP en español
 // CORREGIDO: Se borro la linea 10
@@ -87,6 +92,134 @@ class DocumentController {
                 .upload-area:hover {
                     background-color: #f8f9fa;
                 }
+                
+                .progress-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000;
+                }
+
+                .progress-content {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                    min-width: 400px;
+                    max-width: 500px;
+                    text-align: center;
+                }
+
+                .progress-bar-container {
+                    width: 100%;
+                    height: 20px;
+                    background-color: #e9ecef;
+                    border-radius: 10px;
+                    margin: 1rem 0;
+                    overflow: hidden;
+                    position: relative;
+                }
+
+                .progress-bar {
+                    height: 100%;
+                    background: linear-gradient(90deg, #007BFF, #28a745);
+                    border-radius: 10px;
+                    width: 0%;
+                    transition: width 0.5s ease;
+                    position: relative;
+                }
+
+                .progress-bar::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: linear-gradient(45deg, 
+                        transparent 35%, 
+                        rgba(255, 255, 255, 0.5) 50%, 
+                        transparent 65%
+                    );
+                    animation: shimmer 1.5s infinite;
+                }
+
+                @keyframes shimmer {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+
+                .progress-text {
+                    font-size: 1.1rem;
+                    color: #333;
+                    margin-bottom: 0.5rem;
+                    font-weight: 500;
+                }
+
+                .progress-percentage {
+                    font-size: 1.5rem;
+                    font-weight: bold;
+                    color: #007BFF;
+                    margin: 0.5rem 0;
+                }
+
+                .progress-step {
+                    font-size: 0.9rem;
+                    color: #666;
+                    margin-top: 0.5rem;
+                    font-style: italic;
+                }
+
+                .success-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1001;
+                }
+
+                .success-content {
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                    min-width: 350px;
+                    text-align: center;
+                    border-top: 5px solid #28a745;
+                }
+
+                .success-icon {
+                    font-size: 3rem;
+                    color: #28a745;
+                    margin-bottom: 1rem;
+                }
+
+                .spinner {
+                    border: 3px solid #f3f3f3;
+                    border-top: 3px solid #007BFF;
+                    border-radius: 50%;
+                    width: 30px;
+                    height: 30px;
+                    animation: spin 1s linear infinite;
+                    margin: 1rem auto;
+                }
+
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+
                 .btn {
                     padding: 0.5rem 1rem;
                     border: none;
@@ -139,6 +272,15 @@ class DocumentController {
                     border: 1px solid #f5c6cb;
                     color: #721c24;
                 }
+                .processing-info {
+                    background: #fff3cd;
+                    border: 1px solid #ffeaa7;
+                    color: #856404;
+                    padding: 0.75rem;
+                    border-radius: 4px;
+                    margin-top: 1rem;
+                    font-size: 0.9rem;
+                }
             </style>
         </head>
         <body>
@@ -155,12 +297,16 @@ class DocumentController {
             <div class="documents-container">
                 <div class="welcome-card">
                     <h1>📄 Gestión de Documentos ICU</h1>
-                    <p>Sistema de documentos con análisis inteligente de contenido</p>
+                    <p>Sistema de documentos con análisis inteligente de contenido y OCR</p>
                 </div>
 
                 ${permisos.subir_documentos ? `
                 <div class="upload-section">
                     <h3>📤 Subir Nuevo Documento</h3>
+                    <div class="processing-info">
+                        <strong>ℹ️ Información:</strong> Los PDFs escaneados serán procesados automáticamente con OCR para extraer texto.
+                        El procesamiento puede tomar unos minutos dependiendo del tamaño del documento.
+                    </div>
                     <form id="uploadForm" enctype="multipart/form-data">
                         <div class="form-group">
                             <label for="titulo">Título del documento:</label>
@@ -177,13 +323,17 @@ class DocumentController {
                             </select>
                         </div>
                         <div class="upload-area" onclick="document.getElementById('archivo').click()">
-                            <p>🔄 Haz clic aquí para seleccionar un archivo PDF</p>
-                            <p><small>Máximo 10MB - Solo archivos PDF</small></p>
-                            <input type="file" id="archivo" name="archivo" accept=".pdf" class="hidden" onchange="updateFileName(this)">
+                            <p>🔄 Haz clic aquí para seleccionar un archivo</p>
+                            <p><small>Máximo 10MB - PDF, imágenes (JPG, PNG, TIFF)</small></p>
+                            <input type="file" id="archivo" name="archivo" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp" class="hidden" onchange="updateFileName(this)">
                         </div>
                         <div id="fileName" style="margin: 1rem 0; font-style: italic;"></div>
                         <button type="submit" class="btn btn-primary">📤 Subir Documento</button>
                     </form>
+                    <div id="processingStatus" class="hidden processing-info">
+                        <div id="processingMessage">🔄 Procesando documento...</div>
+                        <div id="processingDetails"></div>
+                    </div>
                 </div>
                 ` : ''}
 
@@ -227,27 +377,47 @@ class DocumentController {
                 function updateFileName(input) {
                     const fileName = document.getElementById('fileName');
                     if (input.files && input.files[0]) {
-                        fileName.textContent = '📄 Archivo seleccionado: ' + input.files[0].name;
+                        const file = input.files[0];
+                        const fileType = file.type.includes('pdf') ? '📄 PDF' : 
+                                        file.type.includes('image') ? '🖼️ Imagen' : '📁 Archivo';
+                        fileName.innerHTML = \`\${fileType} seleccionado: <strong>\${file.name}</strong> (\${(file.size/1024/1024).toFixed(2)} MB)\`;
                     } else {
                         fileName.textContent = '';
                     }
                 }
 
-              // Subir documento
+              // Subir documento con monitoreo de progreso
               document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
                   e.preventDefault();
                   
                   const formData = new FormData(this);
                   const submitBtn = this.querySelector('button[type="submit"]');
+                  const processingStatus = document.getElementById('processingStatus');
+                  const processingMessage = document.getElementById('processingMessage');
+                  const processingDetails = document.getElementById('processingDetails');
                   
                   // Validar que se seleccionó un archivo
                   if (!formData.get('archivo') || formData.get('archivo').size === 0) {
-                      showAlert('⚠️ Por favor selecciona un archivo PDF', 'error');
+                      showAlert('⚠️ Por favor selecciona un archivo', 'error');
                       return;
                   }
                   
+                  const file = formData.get('archivo');
+                  const isScannedPDF = file.type === 'application/pdf';
+                  const isImage = file.type.startsWith('image/');
+                  
                   submitBtn.disabled = true;
                   submitBtn.textContent = '📤 Subiendo...';
+                  processingStatus.classList.remove('hidden');
+                  
+                  // Mostrar mensaje apropiado según el tipo de archivo
+                  if (isScannedPDF) {
+                      processingMessage.textContent = '🔄 Subiendo PDF... Se aplicará OCR si es necesario';
+                      processingDetails.textContent = 'Esto puede tomar varios minutos para PDFs escaneados';
+                  } else if (isImage) {
+                      processingMessage.textContent = '🖼️ Subiendo imagen... Aplicando OCR';
+                      processingDetails.textContent = 'Extrayendo texto de la imagen';
+                  }
                   
                   try {
                       const response = await fetch('/api/documentos', {
@@ -258,9 +428,19 @@ class DocumentController {
                       const result = await response.json();
                       
                       if (response.ok) {
-                          showAlert('✅ Documento subido exitosamente. Procesando análisis...', 'success');
+                          showAlert('✅ Documento procesado exitosamente con análisis NLP' + 
+                                  (result.ocr_aplicado ? ' y OCR' : ''), 'success');
                           this.reset();
                           document.getElementById('fileName').textContent = '';
+                          
+                          // Mostrar información adicional del procesamiento
+                          if (result.ocr_aplicado) {
+                              showAlert('🔍 OCR aplicado: ' + result.texto_extraido_length + ' caracteres extraídos', 'success');
+                          }
+                          if (result.palabras_clave && result.palabras_clave.length > 0) {
+                              showAlert('🏷️ Palabras clave identificadas: ' + result.palabras_clave.slice(0, 5).join(', '), 'success');
+                          }
+                          
                           setTimeout(() => loadDocuments(), 2000);
                       } else {
                           showAlert('❌ Error: ' + (result.error || result.details || 'Error desconocido'), 'error');
@@ -271,6 +451,7 @@ class DocumentController {
                   } finally {
                       submitBtn.disabled = false;
                       submitBtn.textContent = '📤 Subir Documento';
+                      processingStatus.classList.add('hidden');
                   }
               });
 
@@ -341,6 +522,7 @@ class DocumentController {
                       // Manejo seguro de campos JSON
                       let keywords = [];
                       let recomendaciones = [];
+                      let processingInfo = '';
                       
                       try {
                           if (doc.palabras_clave) {
@@ -360,6 +542,20 @@ class DocumentController {
                           }
                       } catch (e) {
                           console.warn('Error parseando recomendaciones para doc', doc.id, ':', e);
+                      }
+                      
+                      // Determinar si se aplicó OCR
+                      if (doc.metadatos_procesamiento) {
+                          try {
+                              const metadatos = typeof doc.metadatos_procesamiento === 'string' 
+                                  ? JSON.parse(doc.metadatos_procesamiento) 
+                                  : doc.metadatos_procesamiento;
+                              if (metadatos.ocr_aplicado) {
+                                  processingInfo = '<div style="margin-top: 0.5rem; padding: 0.5rem; background: #e8f4fd; border-radius: 4px; font-size: 0.8rem;">🔍 Procesado con OCR</div>';
+                              }
+                          } catch (e) {
+                              console.warn('Error parseando metadatos para doc', doc.id);
+                          }
                       }
                       
                       return \`
@@ -410,7 +606,7 @@ class DocumentController {
                               <div style="margin-top: 1rem; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
                                   ⚠️ Este documento no ha sido procesado con análisis NLP
                               </div>
-                              \` : ''}
+                              \` : processingInfo}
                           </div>
                       \`;
                   } catch (error) {
@@ -433,12 +629,12 @@ class DocumentController {
                   
                   container.appendChild(alert);
                   
-                  // Auto-remover después de 5 segundos
+                  // Auto-remover después de 8 segundos (más tiempo para OCR info)
                   setTimeout(() => {
                       if (alert.parentNode) {
                           alert.remove();
                       }
-                  }, 5000);
+                  }, 8000);
               }
 
               // Búsqueda en tiempo real
@@ -497,7 +693,8 @@ static async getDocumentos(req, res) {
       ...doc,
       palabras_clave: doc.palabras_clave || '[]',
       analisis_nlp: doc.analisis_nlp || '{}',
-      recomendaciones: doc.recomendaciones || '[]'
+      recomendaciones: doc.recomendaciones || '[]',
+      metadatos_procesamiento: doc.metadatos_procesamiento || '{}'
     }));
 
     res.json(documentosProcessed);
@@ -507,7 +704,309 @@ static async getDocumentos(req, res) {
   }
 }
 
-  // Subir documento con análisis NLP
+  // Crear directorio temporal si no existe
+  static ensureTempDir() {
+    const tempDir = './temp';
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+      console.log('📁 Directorio temp creado');
+    }
+  }
+
+  // Función principal para procesar archivos con OCR
+  static async procesarArchivoConOCR(archivoPath, tipoArchivo) {
+    try {
+      console.log(`🔍 Procesando archivo: ${tipoArchivo}`);
+      
+      let contenidoTexto = '';
+      let ocrAplicado = false;
+      let metadatos = {
+        tipo_archivo: tipoArchivo,
+        ocr_aplicado: false,
+        metodo_extraccion: 'nativo',
+        caracteres_extraidos: 0,
+        paginas_procesadas: 0
+      };
+
+      if (tipoArchivo === 'application/pdf') {
+        // Procesar PDF
+        const resultado = await this.procesarPDFConOCR(archivoPath);
+        contenidoTexto = resultado.texto;
+        metadatos = { ...metadatos, ...resultado.metadatos };
+        ocrAplicado = resultado.metadatos.ocr_aplicado;
+      } else if (tipoArchivo.startsWith('image/')) {
+        // Procesar imagen
+        console.log('🖼️ Procesando imagen con OCR...');
+        const resultado = await this.extraerTextoDeImagen(archivoPath);
+        contenidoTexto = resultado.texto;
+        metadatos = { ...metadatos, ...resultado.metadatos };
+        ocrAplicado = true;
+      }
+
+      metadatos.caracteres_extraidos = contenidoTexto.length;
+      
+      console.log(`✅ Procesamiento completado: ${metadatos.caracteres_extraidos} caracteres extraídos`);
+      
+      return {
+        texto: contenidoTexto,
+        ocr_aplicado: ocrAplicado,
+        metadatos: metadatos
+      };
+
+    } catch (error) {
+      console.error('❌ Error procesando archivo:', error);
+      return {
+        texto: '',
+        ocr_aplicado: false,
+        metadatos: { error: error.message }
+      };
+    }
+  }
+
+  // Procesar PDF con OCR si es necesario
+  static async procesarPDFConOCR(rutaArchivo) {
+    try {
+      console.log('📄 Procesando PDF...');
+      
+      // 1. Intentar extraer texto nativo primero
+      const textoNativo = await this.extraerTextoNativoPDF(rutaArchivo);
+      
+      let metadatos = {
+        metodo_extraccion: 'nativo',
+        ocr_aplicado: false,
+        caracteres_nativos: textoNativo.length,
+        paginas_procesadas: 0
+      };
+      
+      // 2. Si hay poco texto nativo, probablemente es escaneado
+      if (textoNativo.trim().length < 100) {
+        console.log('📄 PDF parece escaneado, aplicando OCR...');
+        const resultadoOCR = await this.extraerTextoOCRdePDF(rutaArchivo);
+        return {
+          texto: resultadoOCR.texto,
+          metadatos: {
+            ...metadatos,
+            metodo_extraccion: 'ocr',
+            ocr_aplicado: true,
+            paginas_procesadas: resultadoOCR.metadatos.paginas_procesadas,
+            tiempo_procesamiento: resultadoOCR.metadatos.tiempo_procesamiento
+          }
+        };
+      } else {
+        console.log('📝 Texto nativo extraído exitosamente');
+        return {
+          texto: textoNativo,
+          metadatos: metadatos
+        };
+      }
+      
+    } catch (error) {
+      console.error('❌ Error procesando PDF:', error);
+      // Si falla todo, intentar OCR como último recurso
+      try {
+        const resultadoOCR = await this.extraerTextoOCRdePDF(rutaArchivo);
+        return {
+          texto: resultadoOCR.texto,
+          metadatos: {
+            metodo_extraccion: 'ocr_fallback',
+            ocr_aplicado: true,
+            error_nativo: error.message,
+            paginas_procesadas: resultadoOCR.metadatos.paginas_procesadas
+          }
+        };
+      } catch (ocrError) {
+        console.error('❌ OCR también falló:', ocrError);
+        return {
+          texto: '',
+          metadatos: {
+            error: `Nativo: ${error.message}, OCR: ${ocrError.message}`,
+            ocr_aplicado: false,
+            metodo_extraccion: 'fallido'
+          }
+        };
+      }
+    }
+  }
+
+  // Extraer texto nativo del PDF
+  static async extraerTextoNativoPDF(rutaArchivo) {
+    try {
+      const buffer = fs.readFileSync(rutaArchivo);
+      const data = await pdf(buffer);
+      return data.text || '';
+    } catch (error) {
+      console.warn('⚠️ Falló extracción nativa:', error.message);
+      return '';
+    }
+  }
+
+  // OCR para PDFs escaneados
+  static async extraerTextoOCRdePDF(rutaArchivo) {
+    const tiempoInicio = Date.now();
+    
+    try {
+      console.log('🔧 Iniciando OCR para PDF escaneado...');
+      this.ensureTempDir();
+      
+      // Convertir PDF a imágenes
+      const convert = pdf2pic.fromPath(rutaArchivo, {
+        density: 300,           // DPI alta para mejor OCR
+        saveFilename: "page",
+        savePath: "./temp/",
+        format: "png",
+        width: 2000,
+        height: 2800
+      });
+      
+      // Procesar cada página
+      let textoCompleto = '';
+      let pagina = 1;
+      let hayMasPaginas = true;
+      let paginasProcesadas = 0;
+      
+      while (hayMasPaginas && pagina <= 20) { // Límite de 20 páginas
+        try {
+          console.log(`📄 Procesando página ${pagina}...`);
+          
+          const resultado = await convert(pagina);
+          
+          if (resultado && resultado.path) {
+            // Mejorar imagen antes del OCR
+            const imagenMejorada = await this.mejorarImagenParaOCR(resultado.path);
+            
+            // Aplicar OCR
+            const { data: { text } } = await Tesseract.recognize(imagenMejorada, 'spa', {
+              logger: m => {
+                if (m.status === 'recognizing text') {
+                  console.log(`OCR página ${pagina}: ${Math.round(m.progress * 100)}%`);
+                }
+              }
+            });
+            
+            if (text.trim()) {
+              textoCompleto += `\n--- PÁGINA ${pagina} ---\n${text.trim()}\n`;
+              paginasProcesadas++;
+            }
+            
+            // Limpiar archivos temporales
+            this.limpiarArchivo(resultado.path);
+            this.limpiarArchivo(imagenMejorada);
+            
+            pagina++;
+          } else {
+            hayMasPaginas = false;
+          }
+          
+        } catch (paginaError) {
+          console.warn(`⚠️ Error procesando página ${pagina}: ${paginaError.message}`);
+          hayMasPaginas = false;
+        }
+      }
+      
+      const tiempoTotal = Date.now() - tiempoInicio;
+      console.log(`✅ OCR completado. ${paginasProcesadas} páginas procesadas en ${tiempoTotal}ms`);
+      
+      return {
+        texto: textoCompleto.trim(),
+        metadatos: {
+          paginas_procesadas: paginasProcesadas,
+          tiempo_procesamiento: tiempoTotal
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Error en OCR de PDF:', error);
+      return {
+        texto: '',
+        metadatos: {
+          error: error.message,
+          paginas_procesadas: 0,
+          tiempo_procesamiento: Date.now() - tiempoInicio
+        }
+      };
+    }
+  }
+
+  // Extraer texto de imagen
+  static async extraerTextoDeImagen(rutaImagen) {
+    const tiempoInicio = Date.now();
+    
+    try {
+      console.log('🖼️ Aplicando OCR a imagen...');
+      this.ensureTempDir();
+      
+      // Mejorar imagen para OCR
+      const imagenMejorada = await this.mejorarImagenParaOCR(rutaImagen);
+      
+      // Aplicar OCR
+      const { data: { text } } = await Tesseract.recognize(imagenMejorada, 'spa', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            console.log(`OCR imagen: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+      
+      // Limpiar archivo temporal si es diferente al original
+      if (imagenMejorada !== rutaImagen) {
+        this.limpiarArchivo(imagenMejorada);
+      }
+      
+      const tiempoTotal = Date.now() - tiempoInicio;
+      console.log(`✅ OCR de imagen completado en ${tiempoTotal}ms`);
+      
+      return {
+        texto: text.trim(),
+        metadatos: {
+          tiempo_procesamiento: tiempoTotal,
+          ocr_aplicado: true
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Error en OCR de imagen:', error);
+      return {
+        texto: '',
+        metadatos: {
+          error: error.message,
+          tiempo_procesamiento: Date.now() - tiempoInicio
+        }
+      };
+    }
+  }
+
+  // Mejorar imagen para mejor OCR
+  static async mejorarImagenParaOCR(rutaImagen) {
+    try {
+      const imagenMejorada = `${rutaImagen}_enhanced.png`;
+      
+      await sharp(rutaImagen)
+        .grayscale()                    // Escala de grises
+        .normalize()                    // Normalizar contraste
+        .sharpen()                      // Aumentar nitidez
+        .threshold(128)                 // Binarizar (blanco/negro)
+        .png({ quality: 100 })
+        .toFile(imagenMejorada);
+      
+      return imagenMejorada;
+    } catch (error) {
+      console.warn('⚠️ Error mejorando imagen, usando original:', error.message);
+      return rutaImagen;
+    }
+  }
+
+  // Limpiar archivo temporal
+  static limpiarArchivo(rutaArchivo) {
+    try {
+      if (fs.existsSync(rutaArchivo)) {
+        fs.unlinkSync(rutaArchivo);
+      }
+    } catch (error) {
+      console.warn('⚠️ Error eliminando archivo temporal:', rutaArchivo, error.message);
+    }
+  }
+
+  // Subir documento con análisis NLP y OCR
   static async uploadDocumento(req, res) {
     const client = await getClient();
     
@@ -525,60 +1024,99 @@ static async getDocumentos(req, res) {
         throw new Error('El título es obligatorio');
       }
 
-      // Extraer texto del PDF
-      const pdfPath = archivo.path;
-      const dataBuffer = fs.readFileSync(pdfPath);
-      const pdfData = await pdf(dataBuffer);
-      const contenidoTexto = pdfData.text;
+      console.log(`📤 Procesando documento: ${titulo} (${archivo.mimetype})`);
 
-      // Análisis NLP
-      const palabrasClave = await DocumentController.extractKeywords(contenidoTexto);
-      const analisisNLP = await DocumentController.analyzeDocument(contenidoTexto);
+      // Procesar archivo con OCR si es necesario
+      const resultadoProcesamiento = await DocumentController.procesarArchivoConOCR(
+        archivo.path, 
+        archivo.mimetype
+      );
+
+      const contenidoTexto = resultadoProcesamiento.texto;
+      const ocrAplicado = resultadoProcesamiento.ocr_aplicado;
+      const metadatosProcesamiento = resultadoProcesamiento.metadatos;
+
+      console.log(`📝 Texto extraído: ${contenidoTexto.length} caracteres`);
+
+      // Análisis NLP solo si hay contenido de texto suficiente
+      let palabrasClave = [];
+      let analisisNLP = {};
+      
+      if (contenidoTexto && contenidoTexto.trim().length > 50) {
+        console.log('🧠 Aplicando análisis NLP...');
+        palabrasClave = await DocumentController.extractKeywords(contenidoTexto);
+        analisisNLP = await DocumentController.analyzeDocument(contenidoTexto);
+        
+        console.log(`🏷️ Palabras clave extraídas: ${palabrasClave.length}`);
+      } else {
+        console.warn('⚠️ Texto insuficiente para análisis NLP');
+        analisisNLP = {
+          longitud_caracteres: contenidoTexto.length,
+          longitud_palabras: 0,
+          longitud_oraciones: 0,
+          sentiment: 0,
+          complejidad: { score: 0 },
+          temas_detectados: [],
+          procesamiento_limitado: true
+        };
+      }
 
       // Insertar documento en la base de datos
       const documentResult = await client.query(`
         INSERT INTO documentos (
           titulo, remitente, fecha_ingreso, comision_id, usuario_creador_id,
-          archivo_path, contenido_texto, palabras_clave, analisis_nlp
-        ) VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7, $8)
+          archivo_path, contenido_texto, palabras_clave, analisis_nlp, metadatos_procesamiento
+        ) VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `, [
         titulo,
         remitente || null,
         comision_id || null,
         req.session.usuario.id,
-        pdfPath,
+        archivo.path,
         contenidoTexto,
         JSON.stringify(palabrasClave),
-        JSON.stringify(analisisNLP)
+        JSON.stringify(analisisNLP),
+        JSON.stringify(metadatosProcesamiento)
       ]);
 
       const nuevoDocumento = documentResult.rows[0];
 
-      // Buscar documentos similares
-      const recomendaciones = await DocumentController.findSimilarDocuments(
-        nuevoDocumento.id,
-        contenidoTexto,
-        palabrasClave
-      );
+      // Buscar documentos similares solo si hay palabras clave
+      let recomendaciones = [];
+      if (palabrasClave.length > 0 && contenidoTexto.trim().length > 100) {
+        console.log('🔍 Buscando documentos similares...');
+        recomendaciones = await DocumentController.findSimilarDocuments(
+          nuevoDocumento.id,
+          contenidoTexto,
+          palabrasClave
+        );
+        console.log(`💡 Documentos similares encontrados: ${recomendaciones.length}`);
+      }
 
       // Actualizar documento con recomendaciones
-      await client.query(`
-        UPDATE documentos 
-        SET recomendaciones = $1 
-        WHERE id = $2
-      `, [JSON.stringify(recomendaciones), nuevoDocumento.id]);
+      if (recomendaciones.length > 0) {
+        await client.query(`
+          UPDATE documentos 
+          SET recomendaciones = $1 
+          WHERE id = $2
+        `, [JSON.stringify(recomendaciones), nuevoDocumento.id]);
+      }
 
       await client.query('COMMIT');
 
       console.log(`✅ Documento subido: ${titulo} por ${req.session.usuario.nombre}`);
+      console.log(`🔍 OCR aplicado: ${ocrAplicado ? 'Sí' : 'No'}`);
       
       res.json({
         success: true,
         documento: nuevoDocumento,
         palabras_clave: palabrasClave,
         recomendaciones: recomendaciones,
-        analisis: analisisNLP
+        analisis: analisisNLP,
+        ocr_aplicado: ocrAplicado,
+        texto_extraido_length: contenidoTexto.length,
+        metadatos_procesamiento: metadatosProcesamiento
       });
 
     } catch (error) {
@@ -586,14 +1124,10 @@ static async getDocumentos(req, res) {
       
       // Eliminar archivo si hubo error
       if (req.file && req.file.path) {
-        try {
-          fs.unlinkSync(req.file.path);
-        } catch (deleteError) {
-          console.error('Error eliminando archivo:', deleteError);
-        }
+        this.limpiarArchivo(req.file.path);
       }
 
-      console.error('Error subiendo documento:', error);
+      console.error('❌ Error subiendo documento:', error);
       res.status(500).json({ 
         error: 'Error subiendo documento',
         details: error.message 
@@ -625,8 +1159,20 @@ static async getDocumentos(req, res) {
         return res.status(404).json({ error: 'Archivo físico no encontrado' });
       }
 
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${documento.titulo}.pdf"`);
+      // Determinar tipo de contenido según extensión
+      const extension = path.extname(filePath).toLowerCase();
+      let contentType = 'application/octet-stream';
+      
+      if (extension === '.pdf') {
+        contentType = 'application/pdf';
+      } else if (['.jpg', '.jpeg'].includes(extension)) {
+        contentType = 'image/jpeg';
+      } else if (extension === '.png') {
+        contentType = 'image/png';
+      }
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${documento.titulo}${extension}"`);
       
       const fileStream = fs.createReadStream(filePath);
       fileStream.pipe(res);
@@ -637,7 +1183,7 @@ static async getDocumentos(req, res) {
     }
   }
 
-  // Extraer palabras clave usando NLP
+  // Extraer palabras clave usando NLP (mejorado)
   static async extractKeywords(texto) {
     try {
       // Limpiar y tokenizar texto
@@ -646,71 +1192,109 @@ static async getDocumentos(req, res) {
         .replace(/\s+/g, ' ')
         .trim();
 
-      // Palabras comunes en español a filtrar
+      // Palabras comunes en español a filtrar (expandidas)
       const stopWords = new Set([
         'el', 'la', 'de', 'que', 'y', 'a', 'en', 'un', 'es', 'se', 'no', 'te', 
         'lo', 'le', 'da', 'su', 'por', 'son', 'con', 'para', 'al', 'del', 'los',
         'las', 'una', 'como', 'pero', 'sus', 'han', 'ya', 'o', 'si', 'más',
         'este', 'esta', 'ese', 'esa', 'esto', 'eso', 'ser', 'estar', 'tener',
-        'hacer', 'todo', 'todos', 'toda', 'todas', 'otro', 'otra', 'otros', 'otras'
+        'hacer', 'todo', 'todos', 'toda', 'todas', 'otro', 'otra', 'otros', 'otras',
+        'muy', 'también', 'hasta', 'desde', 'cuando', 'donde', 'cual', 'cuales',
+        'quien', 'quienes', 'cómo', 'qué', 'página', 'páginas', 'documento', 'texto',
+        'archivo', 'parte', 'partes', 'siguiente', 'anterior', 'arriba', 'abajo',
+        'izquierda', 'derecha', 'ver', 'viene', 'va', 'puede', 'debe', 'tiene',
+        'mediante', 'través', 'acerca', 'sobre', 'bajo', 'entre', 'durante', 'culo',
       ]);
 
-      const tokens = natural.WordTokenizer().tokenize(textoLimpio);
+      const tokens = new natural.WordTokenizer().tokenize(textoLimpio);
       
       // Filtrar palabras y calcular frecuencias
       const wordFreq = {};
       tokens.forEach(token => {
         if (token.length > 3 && !stopWords.has(token) && isNaN(token)) {
-          // CORREGIDO: Usar PorterStemmer en lugar de método stem() directo
           const stemmed = natural.PorterStemmer.stem(token);
           wordFreq[stemmed] = (wordFreq[stemmed] || 0) + 1;
         }
       });
 
-      // Obtener las 10 palabras más frecuentes
+      // Obtener las palabras más frecuentes
       const keywords = Object.entries(wordFreq)
         .sort(([,a], [,b]) => b - a)
-        .slice(0, 10)
+        .slice(0, 15)  // Aumentado a 15 para mejor análisis
         .map(([word]) => word);
 
+      console.log(`🏷️ Keywords extraídos: ${keywords.length} de ${Object.keys(wordFreq).length} únicos`);
       return keywords;
+      
     } catch (error) {
-      console.error('Error extrayendo palabras clave:', error);
+      console.error('❌ Error extrayendo palabras clave:', error);
       return [];
     }
   }
 
-  // Analizar documento con NLP
+  // Analizar documento con NLP (mejorado)
   static async analyzeDocument(texto) {
     try {
-      // CORREGIDO: El SentimentAnalyzer requiere un array de tokens stemmed
-      const tokens = natural.WordTokenizer().tokenize(texto.toLowerCase());
-      const stemmedTokens = tokens.map(token => natural.PorterStemmer.stem(token));
+      const tokens = new natural.WordTokenizer().tokenize(texto.toLowerCase());
+      const stemmedTokens = tokens.map(token => PorterStemmerEs.stem(token));
       
       const analisis = {
         longitud_caracteres: texto.length,
         longitud_palabras: tokens.length,
         longitud_oraciones: texto.split(/[.!?]+/).filter(s => s.trim().length > 0).length,
-        sentiment: natural.SentimentAnalyzer.getSentiment(stemmedTokens),
+        sentiment: sentimentAnalyzer.getSentiment(stemmedTokens), 
         complejidad: this.calculateComplexity(texto),
-        temas_detectados: await this.detectTopics(texto)
+        temas_detectados: await this.detectTopics(texto),
+        procesado_con_ocr: true,
+        calidad_texto: this.evaluarCalidadTexto(texto)
       };
 
+      console.log(`🧠 Análisis NLP completado - Sentiment: ${analisis.sentiment}, Complejidad: ${analisis.complejidad.score}`);
       return analisis;
+      
     } catch (error) {
-      console.error('Error analizando documento:', error);
+      console.error('❌ Error analizando documento:', error);
       return {
         longitud_caracteres: texto.length,
         longitud_palabras: texto.split(/\s+/).length,
         longitud_oraciones: texto.split(/[.!?]+/).filter(s => s.trim().length > 0).length,
         sentiment: 0,
         complejidad: { score: 0 },
-        temas_detectados: []
+        temas_detectados: [],
+        error: error.message
       };
     }
   }
 
-  // Calcular complejidad del texto
+  // Evaluar calidad del texto extraído
+  static evaluarCalidadTexto(texto) {
+    const palabras = texto.split(/\s+/).filter(p => p.trim().length > 0);
+    const lineas = texto.split('\n').filter(l => l.trim().length > 0);
+    
+    // Detectar patrones de OCR problemático
+    const caracteresRaros = (texto.match(/[^\w\sáéíóúñ.,;:()¿?¡!\-]/g) || []).length;
+    const palabrasCortas = palabras.filter(p => p.length < 3).length;
+    const numerosAislados = (texto.match(/\b\d\b/g) || []).length;
+    
+    const ratioCaracteresRaros = caracteresRaros / texto.length;
+    const ratioPalabrasCortas = palabrasCortas / palabras.length;
+    const ratioNumerosAislados = numerosAislados / palabras.length;
+    
+    let calidadScore = 1.0;
+    calidadScore -= ratioCaracteresRaros * 2; // Penalizar caracteres raros
+    calidadScore -= ratioPalabrasCortas * 0.5; // Penalizar muchas palabras cortas
+    calidadScore -= ratioNumerosAislados * 0.3; // Penalizar números aislados
+    
+    return {
+      score: Math.max(0, Math.min(1, calidadScore)),
+      caracteres_raros: caracteresRaros,
+      palabras_cortas: palabrasCortas,
+      numeros_aislados: numerosAislados,
+      lineas_procesadas: lineas.length
+    };
+  }
+
+  // Calcular complejidad del texto (mejorado)
   static calculateComplexity(texto) {
     const palabras = texto.split(/\s+/).filter(p => p.trim().length > 0);
     const oraciones = texto.split(/[.!?]+/).filter(s => s.trim().length > 0);
@@ -722,27 +1306,68 @@ static async getDocumentos(req, res) {
     const promedioPalabrasPorOracion = palabras.length / oraciones.length;
     const promedioCaracteresPorPalabra = texto.length / palabras.length;
     
-    // Índice de complejidad simple
-    const complejidad = (promedioPalabrasPorOracion * promedioCaracteresPorPalabra) / 100;
+    // Factores adicionales de complejidad
+    const palabrasLargas = palabras.filter(p => p.length > 7).length;
+    const ratioPalabrasLargas = palabrasLargas / palabras.length;
+    
+    // Índice de complejidad mejorado
+    const complejidadBase = (promedioPalabrasPorOracion * promedioCaracteresPorPalabra) / 100;
+    const bonificacionComplejidad = ratioPalabrasLargas * 2;
+    const complejidad = complejidadBase + bonificacionComplejidad;
     
     return {
       score: Math.min(complejidad, 10), // Escala de 0 a 10
-      palabras_por_oracion: promedioPalabrasPorOracion,
-      caracteres_por_palabra: promedioCaracteresPorPalabra
+      palabras_por_oracion: Math.round(promedioPalabrasPorOracion * 100) / 100,
+      caracteres_por_palabra: Math.round(promedioCaracteresPorPalabra * 100) / 100,
+      ratio_palabras_largas: Math.round(ratioPalabrasLargas * 100) / 100
     };
   }
 
-  // Detectar temas principales
+  // Detectar temas principales (mejorado)
   static async detectTopics(texto) {
     try {
-      // Palabras clave relacionadas con temas universitarios
+      // Palabras clave relacionadas con temas universitarios (expandido)
       const temasUniversitarios = {
-        'academico': ['académico', 'academico', 'currículo', 'curriculo', 'materia', 'asignatura', 'calificación', 'evaluación'],
-        'administrativo': ['administrativo', 'administración', 'gestión', 'proceso', 'tramite', 'solicitud'],
-        'investigación': ['investigación', 'investigacion', 'proyecto', 'estudio', 'análisis', 'metodología'],
-        'estudiantil': ['estudiante', 'estudiantil', 'alumno', 'beca', 'matricula', 'inscripción'],
-        'infraestructura': ['infraestructura', 'edificio', 'construcción', 'mantenimiento', 'equipamiento'],
-        'normativo': ['reglamento', 'norma', 'resolución', 'decreto', 'estatuto', 'disposición']
+        'académico': [
+          'académico', 'academico', 'asignatura', 'asignaturas', 'materia', 'Facultad', 
+          'resolución', 'resolucion', 'evaluación', 'evaluacion', 'Decanato', 'parcial',
+          'final', 'nota', 'reglamento', 'rendimiento', 'icu', 'ICU', 'Estatuto', 'DICAA'
+        ],
+        'administrativo': [
+          'administrativo', 'administración', 'administracion', 'gestión', 'gestion', 
+          'proceso', 'trámite', 'tramite', 'solicitud', 'Rectorado', 'requisito',
+          'documentación', 'documentacion', 'Vicerrectorado', 'registro'
+        ],
+        'investigación': [
+          'investigación', 'investigacion', 'proyecto', 'estudio', 'análisis', 'analisis',
+          'metodología', 'metodologia', 'tesis', 'monografía', 'monografia', 'paper',
+          'publicación', 'publicacion', 'revista', 'congreso', 'simposio'
+        ],
+        'estudiantil': [
+          'estudiante', 'estudiantil', 'alumno', 'beca', 'matricula', 'matrícula',
+          'inscripción', 'inscripcion', 'carrera', 'semestre', 'periodo', 'curso',
+          'graduación', 'graduacion', 'titulación', 'titulacion'
+        ],
+        'infraestructura': [
+          'infraestructura', 'edificio', 'construcción', 'construccion', 'mantenimiento',
+          'equipamiento', 'laboratorio', 'aula', 'biblioteca', 'campus', 'instalación',
+          'instalacion', 'mobiliario', 'tecnología', 'tecnologia'
+        ],
+        'normativo': [
+          'reglamento', 'norma', 'resolución', 'resolucion', 'decreto', 'estatuto',
+          'disposición', 'disposicion', 'ordenanza', 'directiva', 'circular', 'ley',
+          'código', 'codigo', 'marco', 'legal', 'jurídico', 'juridico'
+        ],
+        'financiero': [
+          'presupuesto', 'financiero', 'económico', 'economico', 'costo', 'gasto',
+          'inversión', 'inversion', 'financiamiento', 'recurso', 'fondo', 'partida',
+          'asignación', 'asignacion', 'transferencia', 'pago'
+        ],
+        'personal': [
+          'personal', 'docente', 'profesor', 'maestro', 'instructor', 'catedrático',
+          'catedratico', 'administrativo', 'empleado', 'funcionario', 'contratación',
+          'contratacion', 'nombramiento', 'designación', 'designacion'
+        ]
       };
 
       const textoLower = texto.toLowerCase();
@@ -750,27 +1375,37 @@ static async getDocumentos(req, res) {
 
       for (const [tema, palabras] of Object.entries(temasUniversitarios)) {
         let coincidencias = 0;
+        const palabrasEncontradas = [];
+        
         palabras.forEach(palabra => {
-          coincidencias += (textoLower.match(new RegExp(palabra, 'g')) || []).length;
+          const matches = (textoLower.match(new RegExp(`\\b${palabra}\\b`, 'g')) || []).length;
+          if (matches > 0) {
+            coincidencias += matches;
+            palabrasEncontradas.push(palabra);
+          }
         });
         
         if (coincidencias > 0) {
           temasDetectados.push({
             tema: tema,
             relevancia: coincidencias,
-            palabras_encontradas: palabras.filter(p => textoLower.includes(p))
+            densidad: coincidencias / texto.length * 1000, // Densidad por cada 1000 caracteres
+            palabras_encontradas: palabrasEncontradas.slice(0, 5) // Máximo 5 ejemplos
           });
         }
       }
 
-      return temasDetectados.sort((a, b) => b.relevancia - a.relevancia).slice(0, 3);
+      return temasDetectados
+        .sort((a, b) => b.relevancia - a.relevancia)
+        .slice(0, 5); // Top 5 temas
+        
     } catch (error) {
-      console.error('Error detectando temas:', error);
+      console.error('❌ Error detectando temas:', error);
       return [];
     }
   }
 
-  // Encontrar documentos similares
+  // Encontrar documentos similares (arreglado)
   static async findSimilarDocuments(documentoId, texto, palabrasClave) {
     try {
       const result = await query(`
@@ -783,15 +1418,47 @@ static async getDocumentos(req, res) {
       const documentosSimilares = [];
 
       for (const doc of result.rows) {
-        const otrasClaves = doc.palabras_clave ? JSON.parse(doc.palabras_clave) : [];
-        const similarity = this.calculateSimilarity(palabrasClave, otrasClaves, texto, doc.contenido_texto);
-        
-        if (similarity > 0.3) { // Umbral de similitud del 30%
-          documentosSimilares.push({
-            id: doc.id,
-            titulo: doc.titulo,
-            similarity: similarity
-          });
+        try {
+          let otrasClaves = [];
+          
+          // **ARREGLO AQUÍ** - Validar palabras_clave de forma más robusta
+          if (doc.palabras_clave) {
+            try {
+              // Si ya es un array, usarlo directamente
+              if (Array.isArray(doc.palabras_clave)) {
+                otrasClaves = doc.palabras_clave;
+              }
+              // Si es string, intentar parsearlo
+              else if (typeof doc.palabras_clave === 'string' && doc.palabras_clave.trim() !== '') {
+                const trimmed = doc.palabras_clave.trim();
+                // Si parece JSON, parsearlo
+                if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                  otrasClaves = JSON.parse(trimmed);
+                } else {
+                  // Si es texto plano, dividirlo por comas
+                  otrasClaves = trimmed.split(',').map(k => k.trim()).filter(k => k);
+                }
+              }
+              
+              // Asegurar que sea array
+              if (!Array.isArray(otrasClaves)) otrasClaves = [];
+              
+            } catch (parseError) {
+              console.warn(`Error parsing keywords for document ${doc.id}: ${parseError.message}`);
+              otrasClaves = [];
+            }
+          }
+
+          const similarity = this.calculateSimilarity(palabrasClave, otrasClaves, texto, doc.contenido_texto);
+          if (similarity > 0.2) { // Umbral de similitud del 20%
+            documentosSimilares.push({
+              id: doc.id,
+              titulo: doc.titulo,
+              similarity: similarity
+            });
+          }
+        } catch (docError) {
+          console.warn(`Error processing document ${doc.id} for similarity: ${docError.message}`);
         }
       }
 
@@ -805,7 +1472,7 @@ static async getDocumentos(req, res) {
     }
   }
 
-  // Calcular similitud entre documentos
+  // Calcular similitud entre documentos (mejorado)
   static calculateSimilarity(keywords1, keywords2, texto1, texto2) {
     try {
       // Verificar que tengamos arrays válidos
@@ -818,18 +1485,21 @@ static async getDocumentos(req, res) {
       const keywordSimilarity = union.length > 0 ? intersection.length / union.length : 0;
 
       // Similitud basada en texto usando distancia de Jaccard
-      const tokens1 = new Set(natural.WordTokenizer().tokenize(texto1.toLowerCase()));
-      const tokens2 = new Set(natural.WordTokenizer().tokenize(texto2.toLowerCase()));
+      const tokens1 = new Set(new natural.WordTokenizer().tokenize(texto1.toLowerCase()));
+      const tokens2 = new Set(new natural.WordTokenizer().tokenize(texto2.toLowerCase()));
       
       const tokenIntersection = [...tokens1].filter(t => tokens2.has(t));
       const tokenUnion = new Set([...tokens1, ...tokens2]);
       const textSimilarity = tokenUnion.size > 0 ? tokenIntersection.length / tokenUnion.size : 0;
 
       // Promedio ponderado (70% palabras clave, 30% contenido)
-      return (keywordSimilarity * 0.7) + (textSimilarity * 0.3);
+      const similarity = (keywordSimilarity * 0.7) + (textSimilarity * 0.3);
+      
+      console.log(`🔍 Similitud calculada: ${Math.round(similarity * 100)}% (keywords: ${Math.round(keywordSimilarity * 100)}%, text: ${Math.round(textSimilarity * 100)}%)`);
+      return similarity;
       
     } catch (error) {
-      console.error('Error calculando similitud:', error);
+      console.error('❌ Error calculando similitud:', error);
       return 0;
     }
   }

@@ -492,6 +492,10 @@ app.get('/dashboard', requireAuth, async (req, res) => {
   }
 });
 
+// =================== RUTA DE REPORTES/OCR ===================
+app.get('/api/reportes/calidad-ocr', ReportController.getCalidadOCR);
+
+
 // =================== RUTAS DE USUARIOS ===================
 app.get('/usuarios', requireAuth, requireRole(['administrativo']), async (req, res) => {
   try {
