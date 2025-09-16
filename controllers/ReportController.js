@@ -990,45 +990,6 @@ class ReportController {
     }
   }
 
-  // Obtener distribución de métodos de procesamiento
-  static async getMetodosProcesamiento(req, res) {
-    try {
-      console.log('⚙️ Obteniendo métodos de procesamiento...');
-      
-      const result = await query(`
-        SELECT 
-          CASE 
-            WHEN metadatos_procesamiento IS NULL THEN 'sin_procesar'
-            WHEN metadatos_procesamiento::json->>'metodo_extraccion' = 'nativo' THEN 'nativo'
-            WHEN metadatos_procesamiento::json->>'metodo_extraccion' = 'ocr' THEN 'ocr'
-            WHEN metadatos_procesamiento::json->>'metodo_extraccion' = 'ocr_fallback' THEN 'ocr_fallback'
-            ELSE 'otros'
-          END as metodo,
-          COUNT(*) as cantidad
-        FROM documentos
-        GROUP BY 
-          CASE 
-            WHEN metadatos_procesamiento IS NULL THEN 'sin_procesar'
-            WHEN metadatos_procesamiento::json->>'metodo_extraccion' = 'nativo' THEN 'nativo'
-            WHEN metadatos_procesamiento::json->>'metodo_extraccion' = 'ocr' THEN 'ocr'
-            WHEN metadatos_procesamiento::json->>'metodo_extraccion' = 'ocr_fallback' THEN 'ocr_fallback'
-            ELSE 'otros'
-          END
-        ORDER BY cantidad DESC
-      `);
-
-      console.log('⚙️ Métodos de procesamiento:', result.rows);
-      res.json(result.rows);
-
-    } catch (error) {
-      console.error('Error obteniendo métodos de procesamiento:', error);
-      res.status(500).json({ 
-        error: 'Error obteniendo métodos de procesamiento',
-        details: error.message 
-      });
-    }
-  }
-
   // Obtener análisis temporal (actualizado para incluir OCR)
   static async getAnalisisTemporal(req, res) {
     try {

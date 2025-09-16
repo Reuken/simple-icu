@@ -14,6 +14,8 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
+app.use(express.static('public'));
+
 // Configurar multer para subida de archivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -228,7 +230,7 @@ function getPermisos(tipo_usuario, rol) {
     // Consejeros solo pueden ver, no gestionar
     permisos.ver_documentos = true;
     permisos.ver_comisiones = true;
-    permisos.ver_reportes = true;
+    permisos.ver_reportes = false;
     permisos.ver_facultades = true;
   }
 
@@ -306,7 +308,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         </div>
       `).join('');
     } else {
-      comisionesHtml = '<p>No está asignado a ninguna comisión actualmente.</p>';
+      comisionesHtml = '<p>Es administrativo o no está asignado a ninguna comisión actualmente.</p>';
     }
 
     res.send(`
@@ -412,8 +414,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   margin: 0.5rem 0;
               }
               .logout-btn {
-                  background-color: #dc3545;
-                  color: white;
+                  background-color: #007BFF;
+                  color: black;
                   padding: 0.5rem 1rem;
                   border: none;
                   border-radius: 4px;
@@ -423,7 +425,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   transition: background-color 0.3s ease;
               }
               .logout-btn:hover {
-                  background-color: #c82333;
+                  background-color: #dee2e6;
               }
           </style>
       </head>
@@ -440,27 +442,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <div class="dashboard-container">
               <div class="welcome-card">
                   <h1>¡Bienvenido ${usuario.nombre}!</h1>
-                  <p>Usted es: <strong>${usuario.descripcion_rol}</strong></p>
                   <span class="role-badge">${usuario.rol.replace('_', ' ').toUpperCase()}</span>
-              </div>
-
-              <div class="stats-grid">
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.total_usuarios}</div>
-                      <div>Usuarios Totales</div>
-                  </div>
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.administrativos}</div>
-                      <div>Administrativos</div>
-                  </div>
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.consejeros}</div>
-                      <div>Consejeros</div>
-                  </div>
-                  <div class="stat-card">
-                      <div class="stat-number">${stats.total_comisiones}</div>
-                      <div>Comisiones</div>
-                  </div>
               </div>
 
               <div class="user-info">
@@ -468,8 +450,6 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
                       <div><strong>ID:</strong> ${usuario.id}</div>
                       <div><strong>Código:</strong> ${usuario.codigo}</div>
-                      <div><strong>Email:</strong> ${usuario.email}</div>
-                      <div><strong>Tipo:</strong> ${usuario.tipo_usuario}</div>
                   </div>
               </div>
 

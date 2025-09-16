@@ -3,22 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Mi Proyecto</title>
+    <title>Login - ICU</title>
     <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
 
     <nav>
-        <a href="/" class="logo">MiProyecto</a>
+        <a href="/" class="logo">ICU</a>
         <div class="nav-links">
             <a href="/">Inicio</a>
-            <a href="/acerca.html">Acerca de</a>
+            <a href="/acerca.html">Acerca del ICU</a>
         </div>
     </nav>
 
     <div class="container">
-        <h1>Acceso de Usuario</h1>
-        <p>Ingresa tu código y contraseña para continuar.</p>
+        <div class="header-logo-container">
+            <img src="img/icu_solo.png" alt="Logo Ilustre Consejo Universitario" class="header-logo">
+        </div>
+        <h1>Pagina de acceso para Consejeros ICU y administrativos</h1>
+        <p>Ingresa tu código asignado y contraseña para continuar.</p>
         
         <form action="/login" method="POST" class="login-form">
             <input type="text" id="codigo" name="codigo" placeholder="Tu Código de Acceso" required>

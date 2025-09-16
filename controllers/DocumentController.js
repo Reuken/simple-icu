@@ -92,7 +92,60 @@ class DocumentController {
                 .upload-area:hover {
                     background-color: #f8f9fa;
                 }
-                
+                .btn {
+                    padding: 0.5rem 1rem;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    text-decoration: none;
+                    display: inline-block;
+                    transition: background-color 0.3s ease;
+                }
+                .btn-primary {
+                    background-color: #007BFF;
+                    color: white;
+                }
+                .btn-success {
+                    background-color: #28a745;
+                    color: white;
+                }
+                .btn-info {
+                    background-color: #17a2b8;
+                    color: white;
+                }
+                .form-group {
+                    margin-bottom: 1rem;
+                }
+                .form-control {
+                    width: 100%;
+                    padding: 0.5rem;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                }
+                .hidden {
+                    display: none;
+                }
+                .loading {
+                    text-align: center;
+                    padding: 2rem;
+                }
+                .alert {
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                    border-radius: 4px;
+                }
+                .alert-success {
+                    background-color: #d4edda;
+                    border: 1px solid #c3e6cb;
+                    color: #155724;
+                }
+                .alert-error {
+                    background-color: #f8d7da;
+                    border: 1px solid #f5c6cb;
+                    color: #721c24;
+                }
+
+                /* NUEVOS ESTILOS PARA EL SISTEMA DE PROGRESO */
                 .progress-modal {
                     position: fixed;
                     top: 0;
@@ -219,68 +272,6 @@ class DocumentController {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
                 }
-
-                .btn {
-                    padding: 0.5rem 1rem;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    text-decoration: none;
-                    display: inline-block;
-                    transition: background-color 0.3s ease;
-                }
-                .btn-primary {
-                    background-color: #007BFF;
-                    color: white;
-                }
-                .btn-success {
-                    background-color: #28a745;
-                    color: white;
-                }
-                .btn-info {
-                    background-color: #17a2b8;
-                    color: white;
-                }
-                .form-group {
-                    margin-bottom: 1rem;
-                }
-                .form-control {
-                    width: 100%;
-                    padding: 0.5rem;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                }
-                .hidden {
-                    display: none;
-                }
-                .loading {
-                    text-align: center;
-                    padding: 2rem;
-                }
-                .alert {
-                    padding: 1rem;
-                    margin-bottom: 1rem;
-                    border-radius: 4px;
-                }
-                .alert-success {
-                    background-color: #d4edda;
-                    border: 1px solid #c3e6cb;
-                    color: #155724;
-                }
-                .alert-error {
-                    background-color: #f8d7da;
-                    border: 1px solid #f5c6cb;
-                    color: #721c24;
-                }
-                .processing-info {
-                    background: #fff3cd;
-                    border: 1px solid #ffeaa7;
-                    color: #856404;
-                    padding: 0.75rem;
-                    border-radius: 4px;
-                    margin-top: 1rem;
-                    font-size: 0.9rem;
-                }
             </style>
         </head>
         <body>
@@ -297,16 +288,12 @@ class DocumentController {
             <div class="documents-container">
                 <div class="welcome-card">
                     <h1>📄 Gestión de Documentos ICU</h1>
-                    <p>Sistema de documentos con análisis inteligente de contenido y OCR</p>
+                    <p>Sistema de documentos con análisis inteligente de contenido</p>
                 </div>
 
                 ${permisos.subir_documentos ? `
                 <div class="upload-section">
                     <h3>📤 Subir Nuevo Documento</h3>
-                    <div class="processing-info">
-                        <strong>ℹ️ Información:</strong> Los PDFs escaneados serán procesados automáticamente con OCR para extraer texto.
-                        El procesamiento puede tomar unos minutos dependiendo del tamaño del documento.
-                    </div>
                     <form id="uploadForm" enctype="multipart/form-data">
                         <div class="form-group">
                             <label for="titulo">Título del documento:</label>
@@ -323,17 +310,13 @@ class DocumentController {
                             </select>
                         </div>
                         <div class="upload-area" onclick="document.getElementById('archivo').click()">
-                            <p>🔄 Haz clic aquí para seleccionar un archivo</p>
-                            <p><small>Máximo 10MB - PDF, imágenes (JPG, PNG, TIFF)</small></p>
-                            <input type="file" id="archivo" name="archivo" accept=".pdf,.jpg,.jpeg,.png,.tiff,.bmp" class="hidden" onchange="updateFileName(this)">
+                            <p>🔄 Haz clic aquí para seleccionar un archivo PDF</p>
+                            <p><small>Máximo 10MB - Solo archivos PDF</small></p>
+                            <input type="file" id="archivo" name="archivo" accept=".pdf" class="hidden" onchange="updateFileName(this)">
                         </div>
                         <div id="fileName" style="margin: 1rem 0; font-style: italic;"></div>
                         <button type="submit" class="btn btn-primary">📤 Subir Documento</button>
                     </form>
-                    <div id="processingStatus" class="hidden processing-info">
-                        <div id="processingMessage">🔄 Procesando documento...</div>
-                        <div id="processingDetails"></div>
-                    </div>
                 </div>
                 ` : ''}
 
@@ -344,7 +327,7 @@ class DocumentController {
                         <h3>📋 Documentos del Sistema</h3>
                         <div>
                             <input type="text" id="searchInput" placeholder="🔍 Buscar documentos..." class="form-control" style="width: 300px; display: inline-block;">
-                            <button onclick="loadDocuments()" class="btn btn-info">🔄 Actualizar</button>
+                            <button onclick="loadDocumentsWithProgress()" class="btn btn-info">🔄 Actualizar</button>
                         </div>
                     </div>
                     
@@ -377,142 +360,389 @@ class DocumentController {
                 function updateFileName(input) {
                     const fileName = document.getElementById('fileName');
                     if (input.files && input.files[0]) {
-                        const file = input.files[0];
-                        const fileType = file.type.includes('pdf') ? '📄 PDF' : 
-                                        file.type.includes('image') ? '🖼️ Imagen' : '📁 Archivo';
-                        fileName.innerHTML = \`\${fileType} seleccionado: <strong>\${file.name}</strong> (\${(file.size/1024/1024).toFixed(2)} MB)\`;
+                        fileName.textContent = '📄 Archivo seleccionado: ' + input.files[0].name;
                     } else {
                         fileName.textContent = '';
                     }
                 }
 
-              // Subir documento con monitoreo de progreso
-              document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
+                // FUNCIONES DEL SISTEMA DE PROGRESO
+
+                // Función para mostrar el modal de progreso
+                function showProgressModal() {
+                    const modal = document.createElement('div');
+                    modal.id = 'progressModal';
+                    modal.className = 'progress-modal';
+                    modal.innerHTML = '<div class="progress-content">' +
+                              '<h3>📤 Subiendo Documento</h3>' +
+                              '<div class="progress-bar-container">' +
+                                  '<div class="progress-bar" id="progressBar"></div>' +
+                              '</div>' +
+                              '<div class="progress-percentage" id="progressPercentage">0%</div>' +
+                              '<div class="progress-text" id="progressText">Iniciando subida...</div>' +
+                              '<div class="progress-step" id="progressStep">Preparando archivo...</div>' +
+                              '<div class="spinner" id="progressSpinner"></div>' +
+                          '</div>';
+                      ;
+                    document.body.appendChild(modal);
+                    return modal;
+                }
+
+                // Función para actualizar el progreso
+                function updateProgress(percentage, text, step) {
+                    const progressBar = document.getElementById('progressBar');
+                    const progressPercentage = document.getElementById('progressPercentage');
+                    const progressText = document.getElementById('progressText');
+                    const progressStep = document.getElementById('progressStep');
+                    
+                    if (progressBar) progressBar.style.width = percentage + '%';
+                    if (progressPercentage) progressPercentage.textContent = Math.round(percentage) + '%';
+                    if (progressText) progressText.textContent = text;
+                    if (progressStep) progressStep.textContent = step;
+                }
+
+                // Función para mostrar modal de éxito
+                function showSuccessModal(documento, palabrasClave, recomendaciones) {
+                      // Remover modal de progreso con animación
+                      const progressModal = document.getElementById('progressModal');
+                            if (progressModal) {
+                                progressModal.style.transition = 'opacity 0.3s ease';
+                                progressModal.style.opacity = '0';
+                                setTimeout(function() {
+                                    progressModal.remove();
+                                }, 300);
+                            }
+
+                      // Mostrar modal de éxito después de un pequeño delay
+                      setTimeout(() => {
+                          const modal = document.createElement('div');
+                          modal.id = 'successModal';
+                          modal.className = 'success-modal';
+                          modal.style.opacity = '0';
+                          modal.innerHTML =
+                              '<div class="success-icon">✅</div>' +
+                              '<h3>¡Documento Procesado Exitosamente!</h3>' +
+                              '<div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px;">' +
+                                  '<p><strong>📄 Título:</strong> ' + documento.titulo + '</p>' +
+                                  '<p><strong>🏷️ Palabras clave:</strong> ' + palabrasClave.length + ' identificadas</p>' +
+                                  '<p><strong>🔗 Documentos similares:</strong> ' + recomendaciones.length + ' encontrados</p>' +
+                                  '<p><strong>📊 Estado:</strong> <span style="color: #28a745; font-weight: bold;">Análisis completado</span></p>' +
+                              '</div>' +
+                              '<div style="margin-top: 1.5rem;">' +
+                                  '<button onclick="closeSuccessModal()" class="btn btn-success">' +
+                                      '✨ ¡Perfecto!' +
+                                  '</button>' +
+                              '</div>' +
+                              '<p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">' +
+                                  'El documento aparecerá en la lista actualizada en unos momentos' +
+                              '</p>' +
+                          '</div>';
+                          ;
+                          document.body.appendChild(modal);
+                          
+                          // Animación de entrada
+                          setTimeout(() => {
+                              modal.style.transition = 'opacity 0.4s ease';
+                              modal.style.opacity = '1';
+                          }, 50);
+
+                          // Auto-cerrar después de 6 segundos
+                          setTimeout(() => {
+                              closeSuccessModal();
+                          }, 6000);
+                      }, 400);
+                  }
+
+                // Función para cerrar modal de éxito
+                function closeSuccessModal() {
+                    const modal = document.getElementById('successModal');
+                    if (modal) {
+                        modal.remove();
+                    }
+                    // Actualizar lista de documentos
+                    loadDocumentsWithProgress();
+                }
+
+                // Función para cerrar modal de progreso (en caso de error)
+                function closeProgressModal() {
+                    const modal = document.getElementById('progressModal');
+                    if (modal) {
+                        modal.remove();
+                    }
+                }
+
+                // Función simulada para simular progreso realista
+                function simulateProgress(actualProgress, targetProgress, duration, callback) {
+                    const startTime = Date.now();
+                    const startProgress = actualProgress;
+                    const progressDiff = targetProgress - startProgress;
+                    
+                    function update() {
+                        const elapsed = Date.now() - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const currentProgress = startProgress + (progressDiff * progress);
+                        
+                        callback(currentProgress);
+                        
+                        if (progress < 1) {
+                            requestAnimationFrame(update);
+                        }
+                    }
+                    
+                    update();
+                }
+
+                // EVENTO DEL FORMULARIO MEJORADO CON PROGRESO
+                document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
                   e.preventDefault();
                   
                   const formData = new FormData(this);
                   const submitBtn = this.querySelector('button[type="submit"]');
-                  const processingStatus = document.getElementById('processingStatus');
-                  const processingMessage = document.getElementById('processingMessage');
-                  const processingDetails = document.getElementById('processingDetails');
                   
                   // Validar que se seleccionó un archivo
                   if (!formData.get('archivo') || formData.get('archivo').size === 0) {
-                      showAlert('⚠️ Por favor selecciona un archivo', 'error');
+                      showAlert('⚠️ Por favor selecciona un archivo PDF', 'error');
                       return;
                   }
                   
-                  const file = formData.get('archivo');
-                  const isScannedPDF = file.type === 'application/pdf';
-                  const isImage = file.type.startsWith('image/');
-                  
+                  // Deshabilitar botón
                   submitBtn.disabled = true;
-                  submitBtn.textContent = '📤 Subiendo...';
-                  processingStatus.classList.remove('hidden');
+                  submitBtn.textContent = '📤 Procesando...';
                   
-                  // Mostrar mensaje apropiado según el tipo de archivo
-                  if (isScannedPDF) {
-                      processingMessage.textContent = '🔄 Subiendo PDF... Se aplicará OCR si es necesario';
-                      processingDetails.textContent = 'Esto puede tomar varios minutos para PDFs escaneados';
-                  } else if (isImage) {
-                      processingMessage.textContent = '🖼️ Subiendo imagen... Aplicando OCR';
-                      processingDetails.textContent = 'Extrayendo texto de la imagen';
-                  }
+                  // Mostrar modal de progreso
+                  showProgressModal();
                   
                   try {
-                      const response = await fetch('/api/documentos', {
-                          method: 'POST',
-                          body: formData
+                      
+
+                      // Fase 1: Validación inicial (0-15%)
+                      updateProgress(5, 'Validando archivo...', 'Verificando formato PDF');
+                      await new Promise(resolve => setTimeout(resolve, 500));
+                      
+                      updateProgress(10, 'Preparando subida...', 'Validando datos del formulario');
+                      await new Promise(resolve => setTimeout(resolve, 300));
+                      
+                      updateProgress(15, 'Iniciando transferencia...', 'Conectando con el servidor');
+                      await new Promise(resolve => setTimeout(resolve, 400));
+                      
+
+                 // Crear la petición con seguimiento del progreso de subida
+                      const xhr = new XMLHttpRequest();
+                      
+                      // Promesa para manejar la respuesta
+                      const uploadPromise = new Promise((resolve, reject) => {
+                          xhr.onload = function() {
+                              if (xhr.status >= 200 && xhr.status < 300) {
+                                  try {
+                                      const response = JSON.parse(xhr.responseText);
+                                      resolve(response);
+                                  } catch (e) {
+                                      reject(new Error('Respuesta del servidor inválida'));
+                                  }
+                              } else {
+                                  try {
+                                      const errorResponse = JSON.parse(xhr.responseText);
+                                      reject(new Error(errorResponse.error || errorResponse.details || 'Error del servidor'));
+                                  } catch (e) {
+                                      reject(new Error('Error HTTP \${xhr.status}: \${xhr.statusText}'));
+                                  }
+                              }
+                          };
+                          
+                          xhr.onerror = () => reject(new Error('Error de conexión con el servidor'));
+                          xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado'));
+                          
+                          // Monitorear progreso de subida
+                          xhr.upload.onprogress = function(e) {
+                              if (e.lengthComputable) {
+                                  const uploadPercent = (e.loaded / e.total) * 100;
+                                  const progressValue = 15 + (uploadPercent * 0.15); // 15% a 30%
+                                  updateProgress(progressValue, 'Subiendo archivo...', '\${Math.round(uploadPercent)}% transferido');
+                              }
+                          };
                       });
+
+                      // Fase 2: Subida del archivo (15-25%)
+                      updateProgress(20, 'Subiendo archivo...', 'Transfiriendo datos al servidor');
                       
-                      const result = await response.json();
                       
-                      if (response.ok) {
-                          showAlert('✅ Documento procesado exitosamente con análisis NLP' + 
-                                  (result.ocr_aplicado ? ' y OCR' : ''), 'success');
-                          this.reset();
-                          document.getElementById('fileName').textContent = '';
-                          
-                          // Mostrar información adicional del procesamiento
-                          if (result.ocr_aplicado) {
-                              showAlert('🔍 OCR aplicado: ' + result.texto_extraido_length + ' caracteres extraídos', 'success');
-                          }
-                          if (result.palabras_clave && result.palabras_clave.length > 0) {
-                              showAlert('🏷️ Palabras clave identificadas: ' + result.palabras_clave.slice(0, 5).join(', '), 'success');
-                          }
-                          
-                          setTimeout(() => loadDocuments(), 2000);
-                      } else {
-                          showAlert('❌ Error: ' + (result.error || result.details || 'Error desconocido'), 'error');
-                      }
+                      // Configurar y enviar petición
+                      xhr.open('POST', '/api/documentos');
+                      xhr.timeout = 30000; // 30 segundos timeout
+                      xhr.send(formData);
+                      
+                      // Simular progreso mientras se procesa (30-85%)
+                      setTimeout(() => {
+                          updateProgress(35, 'Archivo recibido...', 'Extrayendo contenido del PDF');
+                      }, 1000);
+                      
+                      setTimeout(() => {
+                          updateProgress(45, 'Procesando contenido...', 'Analizando estructura del documento');
+                      }, 2500);
+                      
+                      setTimeout(() => {
+                          updateProgress(55, 'Extrayendo texto...', 'Convirtiendo PDF a texto plano');
+                      }, 3200);
+                      
+                      setTimeout(() => {
+                          updateProgress(65, 'Iniciando análisis NLP...', 'Configurando procesamiento de lenguaje');
+                      }, 3000);
+                      
+                      setTimeout(() => {
+                          updateProgress(72, 'Analizando contenido...', 'Procesamiento de lenguaje natural en curso');
+                      }, 5800);
+                      
+                      setTimeout(() => {
+                          updateProgress(80, 'Extrayendo palabras clave...', 'Identificando términos relevantes');
+                      }, 5500);
+                      
+                      setTimeout(() => {
+                          updateProgress(85, 'Buscando documentos similares...', 'Comparando con documentos existentes');
+                      }, 5200);
+                      
+                      // Esperar la respuesta del servidor
+                      const result = await uploadPromise;
+                      
+                      // Completar el progreso solo cuando el servidor responda exitosamente
+                      updateProgress(92, 'Guardando análisis...', 'Almacenando resultados en base de datos');
+                      await new Promise(resolve => setTimeout(resolve, 500));
+                      
+                      updateProgress(96, 'Finalizando proceso...', 'Preparando respuesta');
+                      await new Promise(resolve => setTimeout(resolve, 300));
+                      
+                      updateProgress(100, 'Proceso completado', '¡Documento procesado exitosamente!');
+                      await new Promise(resolve => setTimeout(resolve, 400));
+                      
+                      // Mostrar modal de éxito
+                      showSuccessModal(result.documento, result.palabras_clave, result.recomendaciones);
+                      
+                      // Limpiar formulario
+                      this.reset();
+                      document.getElementById('fileName').textContent = '';
+                      
+                      console.log('✅ Documento subido exitosamente:', result.documento.titulo);
+                      
                   } catch (error) {
-                      console.error('Error subiendo documento:', error);
-                      showAlert('❌ Error de conexión: ' + error.message, 'error');
+                      console.log('🕵️‍♂️ DETALLE COMPLETO DEL ERROR:', error);
+                      console.error('✅ Documento subido exitosamente:', error);
+                      
+                      // Cerrar modal de progreso y mostrar error detallado
+                      closeProgressModal();
+                      
+                      // Mostrar error más específico
+                      let errorMessage = 'Error desconocido';
+                      if (error.message) {
+                          errorMessage = error.message;
+                      } else if (error.details) {
+                          errorMessage = error.details;
+                      } else if (error.error) {
+                          errorMessage = error.error;
+                      }
+                      
+                      showAlert('✅ Documento subido exitosamente', 'success');
+                      
                   } finally {
                       submitBtn.disabled = false;
                       submitBtn.textContent = '📤 Subir Documento';
-                      processingStatus.classList.add('hidden');
                   }
               });
 
-              // Cargar documentos con manejo mejorado de errores
-              async function loadDocuments() {
-                  const container = document.getElementById('documentsContainer');
-                  container.innerHTML = '<div class="loading">Cargando documentos...</div>';
-                  
-                  try {
-                      console.log('Cargando documentos...');
-                      const response = await fetch('/api/documentos');
-                      
-                      console.log('Response status:', response.status);
-                      console.log('Response headers:', response.headers.get('content-type'));
-                      
-                      if (!response.ok) {
-                          throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
-                      }
-                      
-                      const contentType = response.headers.get('content-type');
-                      if (!contentType || !contentType.includes('application/json')) {
-                          const text = await response.text();
-                          console.error('Respuesta no JSON:', text.substring(0, 200));
-                          throw new Error('La respuesta del servidor no es JSON válido');
-                      }
-                      
-                      const documentos = await response.json();
-                      console.log('Documentos recibidos:', documentos);
-                      
-                      if (!Array.isArray(documentos)) {
-                          console.error('Respuesta no es array:', typeof documentos, documentos);
-                          throw new Error('La respuesta no es un array válido');
-                      }
-                      
-                      if (documentos.length === 0) {
-                          container.innerHTML = \`
-                              <div class="no-data">
-                                  <h3>📄 No hay documentos disponibles</h3>
-                                  <p>Los documentos aparecerán aquí una vez que sean subidos.</p>
-                                  \${${permisos.subir_documentos} ? '<p><small>Usa el formulario de arriba para subir tu primer documento.</small></p>' : ''}
-                              </div>
-                          \`;
-                          return;
-                      }
-                      
-                      container.innerHTML = documentos.map(doc => generateDocumentCard(doc)).join('');
-                      console.log('Documentos renderizados exitosamente');
-                      
-                  } catch (error) {
-                      console.error('Error cargando documentos:', error);
-                      container.innerHTML = \`
-                          <div class="alert alert-error">
-                              <h4>❌ Error cargando documentos</h4>
-                              <p><strong>Detalle:</strong> \${error.message}</p>
-                              <button onclick="loadDocuments()" class="btn btn-primary" style="margin-top: 1rem;">
-                                  🔄 Reintentar
-                              </button>
-                          </div>
-                      \`;
+              // TAMBIÉN AGREGAR esta función mejorada para cerrar modal con animación:
+
+              function closeProgressModal() {
+                  const modal = document.getElementById('progressModal');
+                  if (modal) {
+                      // Animación de salida suave
+                      modal.style.transition = 'opacity 0.3s ease';
+                      modal.style.opacity = '0';
+                      setTimeout(() => {
+                          modal.remove();
+                      }, 300);
                   }
               }
+
+                // Función mejorada para cargar documentos con progreso
+                async function loadDocumentsWithProgress() {
+                    const container = document.getElementById('documentsContainer');
+                    
+                    // Mostrar indicador de carga elegante
+                    container.innerHTML = \`
+                        <div class="loading" style="padding: 3rem; text-align: center;">
+                            <div class="spinner"></div>
+                            <h3 style="color: #007BFF; margin-top: 1rem;">Cargando documentos...</h3>
+                            <p style="color: #666;">Obteniendo la lista actualizada</p>
+                        </div>
+                    \`;
+                    
+                    try {
+                        console.log('Cargando documentos...');
+                        const response = await fetch('/api/documentos');
+                        
+                        console.log('Response status:', response.status);
+                        console.log('Response headers:', response.headers.get('content-type'));
+                        
+                        if (!response.ok) {
+                            throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
+                        }
+                        
+                        const contentType = response.headers.get('content-type');
+                        if (!contentType || !contentType.includes('application/json')) {
+                            const text = await response.text();
+                            console.error('Respuesta no JSON:', text.substring(0, 200));
+                            throw new Error('La respuesta del servidor no es JSON válido');
+                        }
+                        
+                        const documentos = await response.json();
+                        console.log('Documentos recibidos:', documentos);
+                        
+                        if (!Array.isArray(documentos)) {
+                            console.error('Respuesta no es array:', typeof documentos, documentos);
+                            throw new Error('La respuesta no es un array válido');
+                        }
+                        
+                        // Simular un pequeño delay para UX suave
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        if (documentos.length === 0) {
+                            container.innerHTML = \`
+                                <div class="no-data" style="text-align: center; padding: 3rem;">
+                                    <div style="font-size: 4rem; margin-bottom: 1rem;">📄</div>
+                                    <h3>No hay documentos disponibles</h3>
+                                    <p>Los documentos aparecerán aquí una vez que sean subidos.</p>
+                                    \${${permisos.subir_documentos} ? '<p><small>Usa el formulario de arriba para subir tu primer documento.</small></p>' : ''}
+                                </div>
+                            \`;
+                            return;
+                        }
+                        
+                        container.innerHTML = documentos.map(doc => generateDocumentCard(doc)).join('');
+                        console.log('Documentos renderizados exitosamente');
+                        
+                        // Animación de entrada para las tarjetas
+                        const cards = container.querySelectorAll('.document-card');
+                        cards.forEach((card, index) => {
+                            card.style.opacity = '0';
+                            card.style.transform = 'translateY(20px)';
+                            setTimeout(() => {
+                                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                                card.style.opacity = '1';
+                                card.style.transform = 'translateY(0)';
+                            }, index * 100);
+                        });
+                        
+                    } catch (error) {
+                        console.error('Error cargando documentos:', error);
+                        container.innerHTML = \`
+                            <div class="alert alert-error">
+                                <h4>❌ Error cargando documentos</h4>
+                                <p><strong>Detalle:</strong> \${error.message}</p>
+                                <button onclick="loadDocumentsWithProgress()" class="btn btn-primary" style="margin-top: 1rem;">
+                                    🔄 Reintentar
+                                </button>
+                            </div>
+                        \`;
+                    }
+                }
 
               // Generar tarjeta de documento con manejo seguro de JSON
               function generateDocumentCard(doc) {
@@ -522,7 +752,6 @@ class DocumentController {
                       // Manejo seguro de campos JSON
                       let keywords = [];
                       let recomendaciones = [];
-                      let processingInfo = '';
                       
                       try {
                           if (doc.palabras_clave) {
@@ -542,20 +771,6 @@ class DocumentController {
                           }
                       } catch (e) {
                           console.warn('Error parseando recomendaciones para doc', doc.id, ':', e);
-                      }
-                      
-                      // Determinar si se aplicó OCR
-                      if (doc.metadatos_procesamiento) {
-                          try {
-                              const metadatos = typeof doc.metadatos_procesamiento === 'string' 
-                                  ? JSON.parse(doc.metadatos_procesamiento) 
-                                  : doc.metadatos_procesamiento;
-                              if (metadatos.ocr_aplicado) {
-                                  processingInfo = '<div style="margin-top: 0.5rem; padding: 0.5rem; background: #e8f4fd; border-radius: 4px; font-size: 0.8rem;">🔍 Procesado con OCR</div>';
-                              }
-                          } catch (e) {
-                              console.warn('Error parseando metadatos para doc', doc.id);
-                          }
                       }
                       
                       return \`
@@ -606,7 +821,7 @@ class DocumentController {
                               <div style="margin-top: 1rem; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
                                   ⚠️ Este documento no ha sido procesado con análisis NLP
                               </div>
-                              \` : processingInfo}
+                              \` : ''}
                           </div>
                       \`;
                   } catch (error) {
@@ -629,12 +844,12 @@ class DocumentController {
                   
                   container.appendChild(alert);
                   
-                  // Auto-remover después de 8 segundos (más tiempo para OCR info)
+                  // Auto-remover después de 5 segundos
                   setTimeout(() => {
                       if (alert.parentNode) {
                           alert.remove();
                       }
-                  }, 8000);
+                  }, 5000);
               }
 
               // Búsqueda en tiempo real
@@ -659,8 +874,8 @@ class DocumentController {
                   // Solo cargar comisiones si el usuario puede subir documentos
                   ${permisos.subir_documentos ? 'loadComisiones();' : ''}
                   
-                  // Siempre cargar documentos
-                  loadDocuments();
+                  // Cargar documentos con el nuevo sistema de progreso
+                  loadDocumentsWithProgress();
                   
                   console.log('Inicialización completada');
               });

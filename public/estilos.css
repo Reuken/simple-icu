@@ -40,7 +40,7 @@ nav .logo {
 }
 
 nav .nav-links a {
-    color: #555;
+    color: #333;
     text-decoration: none;
     font-weight: 500;
     margin-left: 1.5rem;
@@ -121,4 +121,129 @@ p {
     h1 {
         font-size: 2
     }
-}    
+} 
+
+/* Encabezado */
+header {
+    background-color: #333;
+    color: white;
+    padding: 1rem;
+    text-align: center;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+/* Navegación */
+nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+}
+
+nav ul li {
+    margin: 0 1rem;
+}
+
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: color 0.3s;
+}
+
+nav ul li a:hover {
+    color: #ddd;
+}
+
+/* Contenido principal */
+main {
+    padding: 8rem 2rem 2rem;
+    text-align: center;
+}
+
+.hero {
+    animation: fadeIn 1s ease-in-out;
+    display: flex; /* Habilitamos Flexbox */
+    flex-direction: column; /* Apilamos los elementos verticalmente */
+    justify-content: center; /* Centramos verticalmente */
+    align-items: center; /* Centramos horizontalmente */
+    min-height: 60vh; /* Le damos una altura mínima para que el centrado sea notorio */
+}
+
+.hero h2 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.hero p {
+    font-size: 1.2rem;
+    max-width: 800px;
+    margin: 0 auto 2rem;
+}
+
+.cta-button {
+    background-color: #333;
+    color: white;
+    padding: 1rem 2rem;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 1.2rem;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.cta-button:hover {
+    background-color: #555;
+    transform: translateY(-2px);
+}
+
+/* Estilos para el contenedor del logo en el header */
+.header-logo-container {
+    padding-top: 3rem; 
+    display: flex; /* Usar flexbox para alinear el logo y el posible H1 */
+    justify-content: center; /* Centrar horizontalmente */
+    align-items: center; /* Centrar verticalmente */
+    padding-bottom: 0.3rem; /* Un poco de espacio abajo si no hay h1 */
+}
+
+.header-logo-container2 {
+    display: flex; /* Usar flexbox para alinear el logo y el posible H1 */
+    justify-content: center; /* Centrar horizontalmente */
+    align-items: center; /* Centrar verticalmente */
+    padding-bottom: 0.5 rem; /* Un poco de espacio abajo si no hay h1 */
+}
+
+/* Estilos para el logo dentro del header */
+.header-logo {
+    max-width: 400px; /* Limita el ancho del logo para que no sea demasiado grande */
+    height: auto; /* Mantiene la proporción de la imagen */
+    margin: 0 auto; /* Centra la imagen si el contenedor es más ancho */
+    display: block; /* Asegura que no haya espacio extra debajo de la imagen */
+}
+
+/* Ajuste para el h1 si decides ponerlo junto al logo */
+.header-logo-container h1 {
+    margin-left: 1rem; /* Espacio entre el logo y el título */
+}
+
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
