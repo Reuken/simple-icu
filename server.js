@@ -14,8 +14,6 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(express.static('public'));
-
 // Configurar multer para subida de archivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -86,8 +84,8 @@ function requireRole(roles) {
     if (roles.includes(req.session.usuario.tipo_usuario) || roles.includes(req.session.usuario.rol)) {
       next();
     } else {
-      res.status(403).json({ error: 'No tienes permisos para acceder a esta función' });
-    }
+      res.redirect('/dashboard');
+  }
   };
 }
 
@@ -218,7 +216,8 @@ function getPermisos(tipo_usuario, rol) {
     ver_reportes: false,
     generar_reportes: false,
     ver_facultades: false,
-    gestionar_facultades: false
+    gestionar_facultades: false,
+    ver_mi_espacio: false
   };
 
   if (tipo_usuario === 'administrativo') {
@@ -230,8 +229,8 @@ function getPermisos(tipo_usuario, rol) {
     // Consejeros solo pueden ver, no gestionar
     permisos.ver_documentos = true;
     permisos.ver_comisiones = true;
-    permisos.ver_reportes = false;
     permisos.ver_facultades = true;
+    permisos.ver_mi_espacio = true;
   }
 
   return permisos;
@@ -281,7 +280,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
       accionesHtml += `
         <div class="action-card" onclick="window.location.href='/reportes'">
           <h4>📊 Reportes</h4>
-          <p>Ver reportes y análisis</p>
+          <p>Ver reportes y análisis NLP</p>
           ${permisos.generar_reportes ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}
         </div>
       `;
@@ -291,11 +290,22 @@ app.get('/dashboard', requireAuth, async (req, res) => {
       accionesHtml += `
         <div class="action-card" onclick="window.location.href='/facultades'">
           <h4>🎓 Facultades</h4>
-          <p>Información de facultades</p>
+          <p>Información de facultades y miembros</p>
           <span class="perm-badge view-only">👁️ Solo lectura</span>
         </div>
       `;
     }
+
+    if (permisos.ver_mi_espacio) {
+      accionesHtml += `
+        <div class="action-card" onclick="window.location.href='/mi_espacio'">
+          <h4>👔 Mi espacio ICU</h4>
+          <p>Pagina exclusiva de consejeros</p>
+          <span class="perm-badge view-only">✏️ Gestión completa</span>
+        </div>
+      `;
+    }
+
 
     // Generar comisiones HTML
     let comisionesHtml = '';
@@ -544,7 +554,7 @@ app.get('/comisiones', requireAuth, requireRole(['administrativo', 'consejero'])
 });
 
 // =================== RUTAS DE REPORTES ===================
-app.get('/reportes', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/reportes', requireAuth, requireRole(['administrativo']), (req, res) => {
   ReportController.getReportesPage(req, res);
 });
 
@@ -643,6 +653,11 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// =================== RUTAS A MI ESPACIO EN PUBLIC ===================
+app.get('/mi_espacio', requireAuth, requireRole(['consejero']), (req, res) => {
+  res.send(generateMiEspacioPage(req.session.usuario));
 });
 
 // Pagina Usuarios
@@ -1806,6 +1821,49 @@ function generateFacultadesPage(facultades, usuario) {
     </html>
   `;
 }
+
+function generateMiEspacioPage(usuario) {
+
+  return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Inicio - Mi espacio - ICU</title>
+        <link rel="stylesheet" href="/estilos.css">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+        <style>
+            //CSS
+        </style>
+    </head>
+    <body>
+        <nav>
+            <a href="/dashboard" class="logo">ICU Dashboard</a>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <span class="user-info-nav">👤 ${usuario.nombre}</span>
+                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+            </div>
+        </nav>
+
+        <section class="hero">
+        <h1>👔 Mi espacio ICU</h1>
+        
+        <p><br>Bienvenido a tu espacio
+        <br></p>
+
+        </section>
+        
+        <script>
+        </script>
+    </body>
+    </html>
+  `;
+}
+
+
+
 // Manejo de errores
 app.use((req, res) => {
   res.status(404).send(`
