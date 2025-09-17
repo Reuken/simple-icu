@@ -299,9 +299,9 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     if (permisos.ver_mi_espacio) {
       accionesHtml += `
         <div class="action-card" onclick="window.location.href='/mi_espacio'">
-          <h4>👔 Mi espacio ICU</h4>
-          <p>Pagina exclusiva de consejeros</p>
-          <span class="perm-badge view-only">✏️ Gestión completa</span>
+          <h4>👔 Mi espacio ICU-ADM</h4>
+          <p>Pagina con informacion importante</p>
+          <span class="perm-badge">✏️ Gestión completa</span>
         </div>
       `;
     }
@@ -539,17 +539,31 @@ app.get('/api/documentos/:id/download', requireAuth, requireRole(['administrativ
 app.get('/comisiones', requireAuth, requireRole(['administrativo', 'consejero']), async (req, res) => {
   try {
     const comisiones = await Comision.getAll();
-    const comisionesConMiembros = await Promise.all(
+    const comisionesConDetalles = await Promise.all(
       comisiones.map(async (comision) => {
-        const miembros = await Comision.getMiembros(comision.id);
-        return { ...comision, miembros };
+        // Obtener miembros
+        const miembrosResult = await pool.query(`
+          SELECT u.nombre, u.id FROM usuarios u
+          JOIN usuario_comisiones uc ON u.id = uc.usuario_id
+          WHERE uc.comision_id = $1 AND uc.es_activo = true
+        `, [comision.id]);
+        
+        // Obtener documentos
+        const docsResult = await pool.query(`
+          SELECT id, titulo FROM documentos WHERE comision_id = $1 ORDER BY fecha_ingreso DESC
+        `, [comision.id]);
+        
+        return { 
+          ...comision, 
+          miembros: miembrosResult.rows,
+          documentos: docsResult.rows,
+        };
       })
     );
-    
-    res.send(generateComisionesPage(comisionesConMiembros, req.session.usuario));
+    res.send(generateComisionesPage(comisionesConDetalles));
   } catch (error) {
-    console.error('Error obteniendo comisiones:', error);
-    res.status(500).send('Error interno del servidor');
+    console.error('Error al obtener comisiones:', error);
+    res.status(500).send('Error al cargar la página de comisiones.');
   }
 });
 
@@ -656,7 +670,7 @@ app.get('/health', async (req, res) => {
 });
 
 // =================== RUTAS A MI ESPACIO EN PUBLIC ===================
-app.get('/mi_espacio', requireAuth, requireRole(['consejero']), (req, res) => {
+app.get('/mi_espacio', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
   res.send(generateMiEspacioPage(req.session.usuario));
 });
 
@@ -1161,352 +1175,38 @@ function generateUsersPage(resultado, facultades, usuario) {
 
 //Pagina de Informacion comisiones 
  
-function generateComisionesPage(comisiones, usuario) {
-  const permisos = usuario.permisos;
-  
+function generateComisionesPage(comisiones) {
+  let comisionesHtml = comisiones.map(c => `
+    <div class="comision-card">
+      <h3>${c.nombre}</h3>
+      <p>${c.descripcion}</p>
+      <div class="card-details">
+        <strong>👥 Miembros de la comisión:</strong>
+        <ul>${c.miembros.length > 0 ? c.miembros.map(m => `<li>${m.nombre}</li>`).join('') : '<li>No hay miembros asignados.</li>'}</ul>
+        <strong>📄 N° de documentos de la comisión : (${c.documentos.length})</strong>
+   <!-- Comentado <ul>${c.documentos.length > 0 ? c.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download">${d.titulo}</a></li>`).join('') : '<li>No hay documentos asociados.</li>'}</ul> -->
+      </div>
+    </div>
+  `).join('');
+
   return `
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Gestión de Comisiones - ICU</title>
-        <link rel="stylesheet" href="/estilos.css">
-        <style>
-            .comisiones-container {
-                max-width: 1200px;
-                margin: 2rem auto;
-                padding: 0 1rem;
-            }
-            .comisiones-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-                gap: 1.5rem;
-                margin-top: 2rem;
-            }
-            .comision-card {
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                overflow: hidden;
-            }
-            .comision-card:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            }
-            .comision-header {
-                background: linear-gradient(135deg, #007BFF, #0056b3);
-                color: white;
-                padding: 1.5rem;
-                position: relative;
-            }
-            .comision-title {
-                font-size: 1.2rem;
-                font-weight: bold;
-                margin-bottom: 0.5rem;
-            }
-            .comision-description {
-                opacity: 0.9;
-                font-size: 0.9rem;
-            }
-            .comision-body {
-                padding: 1.5rem;
-            }
-            .comision-meta {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 1rem;
-                font-size: 0.9rem;
-                color: #666;
-            }
-            .miembro-count {
-                background: #e3f2fd;
-                color: #1976d2;
-                padding: 0.25rem 0.5rem;
-                border-radius: 12px;
-                font-size: 0.8rem;
-                font-weight: bold;
-            }
-            .comision-status {
-                padding: 0.25rem 0.5rem;
-                border-radius: 12px;
-                font-size: 0.8rem;
-                font-weight: bold;
-            }
-            .status-activa {
-                background-color: #d4edda;
-                color: #155724;
-            }
-            .status-inactiva {
-                background-color: #f8d7da;
-                color: #721c24;
-            }
-            .comision-actions {
-                display: flex;
-                gap: 0.5rem;
-                justify-content: flex-end;
-                margin-top: 1rem;
-                padding-top: 1rem;
-                border-top: 1px solid #eee;
-            }
-            .btn {
-                padding: 0.5rem 1rem;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                text-decoration: none;
-                display: inline-block;
-                font-size: 0.9rem;
-                transition: background-color 0.3s ease;
-            }
-            .btn-primary {
-                background-color: #007BFF;
-                color: white;
-            }
-            .btn-success {
-                background-color: #28a745;
-                color: white;
-            }
-            .btn-info {
-                background-color: #17a2b8;
-                color: white;
-            }
-            .btn-warning {
-                background-color: #ffc107;
-                color: #212529;
-            }
-            .btn-small {
-                padding: 0.375rem 0.75rem;
-                font-size: 0.8rem;
-            }
-            .search-section {
-                background: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                margin-bottom: 1rem;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-                flex-wrap: wrap;
-            }
-            .form-control {
-                padding: 0.5rem;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                font-size: 1rem;
-            }
-            .stats-cards {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-            .stat-card {
-                background: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                text-align: center;
-            }
-            .stat-number {
-                font-size: 2rem;
-                font-weight: bold;
-                color: #007BFF;
-            }
-            .stat-label {
-                color: #666;
-                margin-top: 0.5rem;
-            }
-            .no-comisiones {
-                text-align: center;
-                padding: 3rem;
-                color: #666;
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-            .modal {
-                display: none;
-                position: fixed;
-                z-index: 1000;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0,0,0,0.5);
-            }
-            .modal-content {
-                background-color: white;
-                margin: 5% auto;
-                padding: 2rem;
-                border-radius: 8px;
-                width: 90%;
-                max-width: 500px;
-                position: relative;
-                max-height: 80vh;
-                overflow-y: auto;
-            }
-            .close {
-                position: absolute;
-                right: 1rem;
-                top: 1rem;
-                font-size: 1.5rem;
-                cursor: pointer;
-            }
-            .form-group {
-                margin-bottom: 1rem;
-            }
-            .form-group label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: bold;
-            }
-            .form-group textarea {
-                resize: vertical;
-                min-height: 80px;
-            }
-        </style>
-    </head>
+    <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Comisiones</title><link rel="stylesheet" href="/estilos.css"></head>
     <body>
-        <nav>
+      <nav>
             <a href="/dashboard" class="logo">ICU Dashboard</a>
             <div class="nav-links">
                 <a href="/dashboard">Dashboard</a>
-                <a href="/usuarios">👥 Usuarios</a>
+                <a href="/usuarios" class="active">👥 Usuarios</a>
                 <a href="/facultades">🏛️ Facultades</a>
-                <a href="/comisiones" class="active">📋 Comisiones</a>
+                <a href="/comisiones">📋 Comisiones</a>
                 <a href="/documentos">📄 Documentos</a>
-                <span class="user-info-nav">👤 ${usuario.nombre}</span>
                 <a href="/logout" class="logout-btn">Cerrar Sesión</a>
             </div>
         </nav>
-
-        <div class="comisiones-container">
-            <div class="welcome-card">
-                <h1>📋 Informacion de Comisiones</h1>
-                <p>Detalles de todas las comisiones y sus miembros</p>
-            </div>
-
-            <!-- Búsqueda y filtros -->
-            <div class="search-section">
-                <input type="text" id="searchInput" placeholder="🔍 Buscar comisiones..." class="form-control" style="flex: 1; min-width: 200px;">
-                <select id="estadoFilter" class="form-control" style="width: 150px;">
-                    <option value="">Todas</option>
-                </select>
-
-            <!-- Grid de comisiones -->
-            ${comisiones.length > 0 ? `
-            <div class="comisiones-grid">
-                ${comisiones.map(c => `
-                <div class="comision-card" data-activa="${c.es_activa}">
-                    <div class="comision-header">
-                        <div class="comision-title">${c.nombre}</div>
-                        <div class="comision-description">${c.descripcion || 'Sin descripción'}</div>
-                    </div>
-                    <div class="comision-body">
-                        <div class="comision-meta">
-                            <span class="miembro-count">👥 Miembros de la comision: 
-                            </span>
-                        </div>
-                        <div style="font-size: 0.9rem; color: #666;">
-                            <p><strong>📄 Documentos:</strong> ${c.total_documentos || 0}</p>
-                        </div>
-                    </div>
-                </div>
-                `).join('')}
-            </div>
-            ` : `
-            `}
-        </div>
-
-        <script>
-            // Variables globales
-            let currentComisiones = [];
-            
-            // Inicializar
-            document.addEventListener('DOMContentLoaded', function() {
-                currentComisiones = ${JSON.stringify(comisiones)};
-                setupEventListeners();
-            });
-            
-            function setupEventListeners() {
-                // Búsqueda y filtros
-                document.getElementById('searchInput').addEventListener('input', filterComisiones);
-                document.getElementById('estadoFilter').addEventListener('change', filterComisiones);
-                
-                // Form submit
-                document.getElementById('comisionForm').addEventListener('submit', handleComisionSubmit);
-            }
-            
-            function filterComisiones() {
-                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                const estadoFilter = document.getElementById('estadoFilter').value;
-                
-                const cards = document.querySelectorAll('.comision-card');
-                
-                cards.forEach(card => {
-                    const text = card.textContent.toLowerCase();
-                    const activa = card.dataset.activa === 'true';
-                    
-                    let show = true;
-                    
-                    // Filtro de texto
-                    if (searchTerm && !text.includes(searchTerm)) {
-                        show = false;
-                    }
-                    card.style.display = show ? 'block' : 'none';
-                });
-            }
-            
- // Modal del VerMiembros - Falta implementar mostrar miembros 
-
-            function viewComision(id) {
-                const comision = currentComisiones.find(c => c.id === id);
-                if (!comision) return;
-                
-                document.getElementById('viewModalTitle').textContent = \`👁️ \${comision.nombre}\`;
-                document.getElementById('viewModalContent').innerHTML = \`
-                    <div style="line-height: 1.6;">
-                        <p><strong>📝 Descripción:</strong></p>
-                        <p style="margin-left: 1rem; font-style: italic;">\${comision.descripcion || 'Sin descripción'}</p>
-                        <p><strong>👥 Miembros:</strong> \${comision.total_miembros || 0}</p>
-                        <p><strong>📄 Documentos:</strong> \${comision.total_documentos || 0}</p>
-                        
-                        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee;">
-                            <button onclick="closeViewModal()" class="btn" style="background: #6c757d; color: white; margin-left: 1rem;">Cerrar</button>
-                        </div>
-                    </div>
-                \`;
-                document.getElementById('viewModal').style.display = 'block';
-            }
-            
-            function closeModal() {
-                document.getElementById('comisionModal').style.display = 'none';
-            }
-            
-            function closeViewModal() {
-                document.getElementById('viewModal').style.display = 'none';
-            }
-            
-            // Cerrar modales al hacer click fuera
-            window.onclick = function(event) {
-                const comisionModal = document.getElementById('comisionModal');
-                const viewModal = document.getElementById('viewModal');
-                
-                if (event.target === comisionModal) {
-                    closeModal();
-                } else if (event.target === viewModal) {
-                    closeViewModal();
-                }
-            }
-        </script>
-    </body>
-    </html>
-  `;
+      <main><div class="comision-grid-container">${comisionesHtml}</div></main>
+    </body></html>`;
 }
+
 
 //Pagina de Facultades
 
@@ -1848,7 +1548,7 @@ function generateMiEspacioPage(usuario) {
         </nav>
 
         <section class="hero">
-        <h1>👔 Mi espacio ICU</h1>
+        <h1>👔 Mi espacio ICU - ADM</h1>
         
         <p><br>Bienvenido a tu espacio
         <br></p>

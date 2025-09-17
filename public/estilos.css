@@ -235,6 +235,57 @@ main {
     margin-left: 1rem; /* Espacio entre el logo y el título */
 }
 
+/* --- Estilo de cada Tarjeta --- */
+.comision-card {
+  background-color: #ffffff; /* Fondo blanco */
+  border: 1px solid #dee2e6; /* Borde sutil */
+  border-radius: 8px; /* Bordes redondeados para un look moderno */
+  padding: 20px; /* Espacio interno para que el contenido no pegue a los bordes */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra para darle profundidad */
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Animación suave */
+}
+
+/* --- Efecto al pasar el mouse por encima de la tarjeta --- */
+.comision-card:hover {
+  transform: translateY(-5px); /* Levanta la tarjeta un poco */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); /* Aumenta la sombra para destacarla */
+}
+
+/* --- Estilos para el contenido dentro de las tarjetas --- */
+.comision-card h3 {
+  margin-top: 0;
+  color: #0056b3;
+  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+.comision-card h4 {
+  color: #495057;
+  margin-bottom: 5px;
+}
+
+.comision-card p {
+  color: #6c757d;
+  line-height: 1.6; /* Mejora la legibilidad */
+}
+
+.comision-card a {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.comision-card a:hover {
+  text-decoration: underline;
+}
+
+.comision-grid-container {
+  display: grid;
+  /* Crea columnas que se adaptan al ancho. Cada tarjeta tendrá un mínimo de 350px. */
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 25px; /* Este es el espacio de separación entre las tarjetas */
+  padding: 25px; /* Espacio alrededor de todas las tarjetas */
+}
 
 /* Animaciones */
 @keyframes fadeIn {
