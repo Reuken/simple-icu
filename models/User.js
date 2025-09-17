@@ -400,7 +400,51 @@ class Facultad {
             throw error;
         }
     } 
-}
+
+    static async obtenerTodasConConsejeros() {
+    try {
+        const result = await query(`
+            SELECT
+                f.id,
+                f.nombre,
+                -- Agrupamos a los consejeros estudiantes en un array JSON
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT('nombre', u.nombre)
+                    ) FILTER (WHERE c.es_estudiante = true), 
+                    '[]'::json
+                ) AS delegados_estudiantes,
+                -- Agrupamos a los consejeros docentes en otro array JSON
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT('nombre', u.nombre)
+                    ) FILTER (WHERE c.es_docente = true), 
+                    '[]'::json
+                ) AS delegados_docentes
+            FROM 
+                facultades f
+            LEFT JOIN 
+                consejeros_icu c ON f.id = c.facultad_id
+            LEFT JOIN 
+                usuarios u ON c.usuario_id = u.id AND u.es_activo = true AND u.tipo_usuario = 'consejero'
+            GROUP BY 
+                f.id, f.nombre  -- SIGLA eliminada de aquí
+            ORDER BY 
+                f.nombre;
+        `);
+
+        const facultadesData = result.rows.map(facultad => ({
+            ...facultad
+        }));
+
+        return facultadesData;
+
+    } catch (error) {
+        console.error('Error al obtener facultades con consejeros anidados:', error);
+        throw error;
+    }
+  }
+}    //Fin de la clase Facultad
 
 class Comision {
   static async getAll() {

@@ -613,27 +613,14 @@ app.get('/api/comisiones', requireAuth, requireRole(['administrativo', 'consejer
 
 // =================== RUTAS DE FACULTADES ===================
 app.get('/facultades', requireAuth, requireRole(['administrativo', 'consejero']), async (req, res) => {
-  try {
-    const facultades = await Facultad.getAll();
-    const facultadesConConsejeros = await Promise.all(
-      facultades.map(async (facultad) => {
-        const result = await require('./config/database').query(`
-          SELECT u.codigo, u.nombre, u.email, c.es_estudiante, c.es_docente, c.es_directiva
-          FROM usuarios u
-          JOIN consejeros_icu c ON u.id = c.usuario_id
-          WHERE c.facultad_id = $1 AND u.es_activo = true
-          ORDER BY u.nombre
-        `, [facultad.id]);
-        
-        return { ...facultad, consejeros: result.rows };
-      })
-    );
-    
-    res.send(generateFacultadesPage(facultadesConConsejeros, req.session.usuario));
-  } catch (error) {
-    console.error('Error obteniendo facultades:', error);
-    res.status(500).send('Error interno del servidor');
-  }
+    try {
+        // Esta llamada ahora usa el nuevo y optimizado método
+        const facultadesData = await Facultad.obtenerTodasConConsejeros();
+        res.send(generateFacultadesPage(facultadesData));
+    } catch (error) {
+        console.error('Error al obtener facultades:', error);
+        res.status(500).send("Error al obtener la información de las facultades.");
+    }
 });
 
 // Logout
@@ -669,7 +656,7 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// =================== RUTAS A MI ESPACIO EN PUBLIC ===================
+// =================== RUTAS A MI ESPACIO ===================
 app.get('/mi_espacio', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
   res.send(generateMiEspacioPage(req.session.usuario));
 });
@@ -1203,16 +1190,31 @@ function generateComisionesPage(comisiones) {
                 <a href="/logout" class="logout-btn">Cerrar Sesión</a>
             </div>
         </nav>
-      <main><div class="comision-grid-container">${comisionesHtml}</div></main>
+      <main><div class="comision-grid-container">
+      <h1>📋 Comisiones</h1>
+      ${comisionesHtml}
+      </div>
+      </main>
     </body></html>`;
 }
 
 
 //Pagina de Facultades
 
-function generateFacultadesPage(facultades, usuario) {
-  const permisos = usuario.permisos;
-  
+function generateFacultadesPage(facultades) {
+  let facultadesHtml = facultades.map(f => `
+        <div class="comision-card">
+            <h3>${f.nombre}</h3>
+            <div class="card-details">
+                <hr>
+                <p><strong>👨‍🎓 Delegados estudiantes:</strong></p>
+                <ul>${f.delegados_estudiantes.length > 0 ? f.delegados_estudiantes.map(d => `<li>${d.nombre}</li>`).join('') : '<li>No hay delegados estudiantes registrados.</li>'}</ul>
+                <p><strong>👨‍🏫 Delegados docentes:</strong></p>
+                <ul>${f.delegados_docentes.length > 0 ? f.delegados_docentes.map(d => `<li>${d.nombre}</li>`).join('') : '<li>No hay delegados docentes registrados.</li>'}</ul>
+            </div>
+        </div>
+    `).join('');
+
   return `
     <!DOCTYPE html>
     <html lang="es">
@@ -1221,194 +1223,6 @@ function generateFacultadesPage(facultades, usuario) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Gestión de Facultades - ICU</title>
         <link rel="stylesheet" href="/estilos.css">
-        <style>
-            .facultades-container {
-                max-width: 1200px;
-                margin: 2rem auto;
-                padding: 0 1rem;
-            }
-            .facultades-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                gap: 1.5rem;
-                margin-top: 2rem;
-            }
-            .facultad-card {
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                overflow: hidden;
-                position: relative;
-            }
-            .facultad-card:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            }
-            .facultad-header {
-                background: linear-gradient(135deg, #28a745, #20c997);
-                color: white;
-                padding: 1.5rem;
-                position: relative;
-            }
-            .facultad-title {
-                font-size: 1.1rem;
-                font-weight: bold;
-                margin-bottom: 0.5rem;
-                line-height: 1.3;
-            }
-            .facultad-code {
-                opacity: 0.9;
-                font-size: 0.8rem;
-                background: rgba(255,255,255,0.2);
-                padding: 0.25rem 0.5rem;
-                border-radius: 12px;
-                display: inline-block;
-            }
-            .facultad-body {
-                padding: 1.5rem;
-            }
-            .facultad-stats {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 1rem;
-                margin-bottom: 1rem;
-            }
-            .stat-item {
-                text-align: center;
-                padding: 0.75rem;
-                background: #f8f9fa;
-                border-radius: 6px;
-            }
-            .stat-number {
-                font-size: 1.5rem;
-                font-weight: bold;
-                color: #28a745;
-                display: block;
-            }
-            .stat-label {
-                font-size: 0.8rem;
-                color: #666;
-                margin-top: 0.25rem;
-            }
-            .facultad-actions {
-                display: flex;
-                gap: 0.5rem;
-                justify-content: flex-end;
-                margin-top: 1rem;
-                padding-top: 1rem;
-                border-top: 1px solid #eee;
-            }
-            .btn {
-                padding: 0.5rem 1rem;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                text-decoration: none;
-                display: inline-block;
-                font-size: 0.9rem;
-                transition: background-color 0.3s ease;
-            }
-            .btn-primary {
-                background-color: #007BFF;
-                color: white;
-            }
-            .btn-success {
-                background-color: #28a745;
-                color: white;
-            }
-            .btn-info {
-                background-color: #17a2b8;
-                color: white;
-            }
-            .btn-small {
-                padding: 0.375rem 0.75rem;
-                font-size: 0.8rem;
-            }
-            .search-section {
-                background: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                margin-bottom: 1rem;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-                flex-wrap: wrap;
-            }
-            .form-control {
-                padding: 0.5rem;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                font-size: 1rem;
-            }
-            .stats-cards {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-            .stat-card {
-                background: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                text-align: center;
-            }
-            .stat-card-number {
-                font-size: 2rem;
-                font-weight: bold;
-                color: #28a745;
-            }
-            .stat-card-label {
-                color: #666;
-                margin-top: 0.5rem;
-            }
-            .no-facultades {
-                text-align: center;
-                padding: 3rem;
-                color: #666;
-                background: white;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-            .modal {
-                display: none;
-                position: fixed;
-                z-index: 1000;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0,0,0,0.5);
-            }
-            .modal-content {
-                background-color: white;
-                margin: 5% auto;
-                padding: 2rem;
-                border-radius: 8px;
-                width: 90%;
-                max-width: 500px;
-                position: relative;
-                max-height: 80vh;
-                overflow-y: auto;
-            }
-            .close {
-                position: absolute;
-                right: 1rem;
-                top: 1rem;
-                font-size: 1.5rem;
-                cursor: pointer;
-            }
-            .form-group {
-                margin-bottom: 1rem;
-            }
-            .form-group label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: bold;
-            }
-        </style>
     </head>
     <body>
         <nav>
@@ -1419,104 +1233,17 @@ function generateFacultadesPage(facultades, usuario) {
                 <a href="/facultades" class="active">🏛️ Facultades</a>
                 <a href="/comisiones">📋 Comisiones</a>
                 <a href="/documentos">📄 Documentos</a>
-                <span class="user-info-nav">👤 ${usuario.nombre}</span>
                 <a href="/logout" class="logout-btn">Cerrar Sesión</a>
             </div>
         </nav>
 
-        <div class="facultades-container">
-            <div class="welcome-card">
-                <h1>🏛️ Facultades</h1>
-                <p>Visualiza las facultades de la UAGRM y sus representantes</p>
-            </div>
-
-            <!-- Búsqueda -->
-            <div class="search-section">
-                <input type="text" id="searchInput" placeholder="🔍 Buscar facultades..." class="form-control" style="flex: 1; min-width: 200px;">
-                ${permisos.crear_facultades ? `
-                <button onclick="openCreateModal()" class="btn btn-success">➕ Nueva Facultad</button>
-                ` : ''}
-            </div>
-
-            <!-- Grid de facultades -->
-            ${facultades.length > 0 ? `
-            <div class="facultades-grid">
-                ${facultades.map(f => `
-                <div class="facultad-card">
-                    <div class="facultad-header">
-                        <div class="facultad-title">${f.nombre}</div>
-                    </div>
-                    <div class="facultad-body">
-                        <div class="facultad-stats">
-                            <div class="stat-item">
-                                <span class="stat-number">${f.total_usuarios || 0}</span>
-                                <span class="stat-label">👨‍🎓 Cantidad total de estudiantes</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-number">${f.total_docentes || 0}</span>
-                                <span class="stat-label">👨‍🏫 Cantidad total de Docentes</span>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.9rem; color: #666; margin-bottom: 1rem;">
-                            <p><strong>👨‍🎓 Delegados estudiantes:</strong></p>
-                            <p><strong>👨‍🏫 Delegados docentes:</strong></p>
-                        </div>
-                    </div>
+        <main><div class="comision-grid-container">
+            <h1>🏛️ Facultades</h1>
+                ${facultadesHtml}
                 </div>
-                `).join('')}
-            </div>
-            ` : `
-            `}
-        </div>
-
-        <script>
-            // Variables globales
-            let currentFacultades = [];
-            
-            // Inicializar
-            document.addEventListener('DOMContentLoaded', function() {
-                currentFacultades = ${JSON.stringify(facultades)};
-                setupEventListeners();
-            });
-            
-            function setupEventListeners() {
-                // Búsqueda
-                document.getElementById('searchInput').addEventListener('input', filterFacultades);
-                
-                // Form submit
-                document.getElementById('facultadForm').addEventListener('submit', handleFacultadSubmit);
-            }
-            
-            function filterFacultades() {
-                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                const cards = document.querySelectorAll('.facultad-card');
-                
-                cards.forEach(card => {
-                    const text = card.textContent.toLowerCase();
-                    card.style.display = text.includes(searchTerm) ? 'block' : 'none';
-                });
-            }
-
-            function closeModal() {
-                document.getElementById('facultadModal').style.display = 'none';
-            }
-            
-            function closeViewModal() {
-                document.getElementById('viewModal').style.display = 'none';
-            }
-                
-            // Cerrar modales al hacer click fuera
-            window.onclick = function(event) {
-                const facultadModal = document.getElementById('facultadModal');
-                const viewModal = document.getElementById('viewModal');
-                
-                if (event.target === facultadModal) {
-                    closeModal();
-                } else if (event.target === viewModal) {
-                    closeViewModal();
-                }
-            }
-        </script>
+        </main>
+       
+  
     </body>
     </html>
   `;
@@ -1524,11 +1251,35 @@ function generateFacultadesPage(facultades, usuario) {
 
 function generateMiEspacioPage(usuario) {
 
+  const { nombre, comisiones, descripcion_rol } = usuario;
+  const comisionesHtml = comisiones.map(c => c.nombre).join(', ') || 'Ninguna asignada';
+
+   // Datos estáticos de la próxima sesión (un admin podría cambiar esto en el futuro)
+    const proximaSesion = {
+        tipo: 'Ordinaria',
+        lugar: 'Sala de Conferencias - Edificio Central',
+        fecha: '17/09/2025',
+        hora: '15:00 PM',
+        temas: [
+            'Revisión del presupuesto para la gestión 2026',
+            'Aprobación de la nueva malla curricular de Ingeniería Informática',
+            'Análisis de solicitudes de año sabático'
+        ],
+        documentos: [ // Esto se podría hacer dinámico en el futuro
+            { id: 1, titulo: 'Propuesta Presupuesto 2026.pdf' },
+            { id: 2, titulo: 'Malla Curricular Ing. Inf. - Propuesta Final.pdf' }
+        ],
+        reglamentos: [
+            'Reglamento de Año Sabático',
+            'Reglamento de Aprobación Curricular'
+        ]
+    };
+
   return `
     <!DOCTYPE html>
     <html lang="es">
     <head>
-        <meta charset="UTF-8">
+        <meta charset="UTF-8">  
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Inicio - Mi espacio - ICU</title>
         <link rel="stylesheet" href="/estilos.css">
@@ -1548,15 +1299,30 @@ function generateMiEspacioPage(usuario) {
         </nav>
 
         <section class="hero">
-        <h1>👔 Mi espacio ICU - ADM</h1>
-        
-        <p><br>Bienvenido a tu espacio
-        <br></p>
+        <main class="comision-grid-container">
+                <div class="comision-card">
+                    <p><strong>Nombre:</strong> ${nombre}</p>
+                    <p><strong>Comisiones:</strong> ${comisionesHtml}</p>
+                    <p><strong>Rol:</strong> ${descripcion_rol}</p>
+                </div>
 
+                <div class="comision-card">
+                    <h3>Próxima Sesión del ICU</h3>
+                    <div class="session-details">
+                        <p><strong>Tipo:</strong> <span class="badge">${proximaSesion.tipo}</span></p>
+                        <p><strong>Lugar:</strong> ${proximaSesion.lugar}</p>
+                        <p><strong>Fecha y Hora:</strong> ${proximaSesion.fecha} a las ${proximaSesion.hora}</p>
+                    </div>
+                    <h4>Temas a Tratar:</h4>
+                    <ul>${proximaSesion.temas.map(t => `<li>${t}</li>`).join('')}</ul>
+                    <hr>
+                    <h4>Documentos para la Sesión:</h4>
+                    <ul>${proximaSesion.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download">${d.titulo}</a></li>`).join('')}</ul>
+                    <h4>Reglamentos a Revisar:</h4>
+                    <ul>${proximaSesion.reglamentos.map(r => `<li>${r}</li>`).join('')}</ul>
+                </div>
+            </main>
         </section>
-        
-        <script>
-        </script>
     </body>
     </html>
   `;
