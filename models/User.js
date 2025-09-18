@@ -244,6 +244,30 @@ class Usuario {
       client.release();
     }
   }
+
+  async setActive(isActive) {
+    try {
+        await query('UPDATE usuarios SET es_activo = $1 WHERE id = $2', [isActive, this.id]);
+        this.es_activo = isActive;
+        return this;
+    } catch (error) {
+        console.error('Error actualizando estado activo:', error);
+        throw error;
+    }
+  }
+
+  static async findById(id) {
+    try {
+      const result = await query(
+        'SELECT * FROM usuarios WHERE id = $1 AND es_activo = true',
+        [id]
+      );
+      return result.rows.length > 0 ? new Usuario(result.rows[0]) : null;
+    } catch (error) {
+      console.error('Error buscando usuario por ID:', error);
+      throw error;
+    }
+  }
 }
 
 // Clase para operaciones de sistema

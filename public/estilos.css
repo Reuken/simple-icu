@@ -22,6 +22,12 @@ body {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px; /* Espacio entre las tarjetas */
+}
+
 /* Barra de Navegación */
 nav {
     background-color: #ffffff;
@@ -167,9 +173,119 @@ nav ul li a:hover {
 
 /* Contenido principal */
 main {
-    padding: 8rem 2rem 2rem;
-    text-align: center;
+    padding: 2rem;
+    text-align: left;
 }
+
+/* Estilos dashboard */
+       .perm-badge {
+                  font-size: 0.8rem;
+                  padding: 0.25rem 0.5rem;
+                  border-radius: 12px;
+                  font-weight: bold;
+                  display: inline-block;
+                  margin-top: 0.5rem;
+              }
+              .perm-badge {
+                  background-color: #28a745;
+                  color: white;
+              }
+              .perm-badge.view-only {
+                  background-color: #6c757d;
+                  color: white;
+              }
+              .dashboard-container {
+                  max-width: 1200px;
+                  margin: 2rem auto;
+                  padding: 0 1rem;
+              }
+              .welcome-card {
+                  background: linear-gradient(135deg, #007BFF, #0056b3);
+                  color: white;
+                  padding: 2rem;
+                  border-radius: 12px;
+                  margin-bottom: 2rem;
+                  text-align: center;
+                  box-shadow: 0 8px 32px rgba(0, 123, 255, 0.3);
+              }
+              .stats-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 1rem;
+                  margin-bottom: 2rem;
+              }
+              .stat-card {
+                  background: white;
+                  padding: 1.5rem;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                  text-align: center;
+                  border-left: 4px solid #007BFF;
+              }
+              .stat-number {
+                  font-size: 2rem;
+                  font-weight: bold;
+                  color: #007BFF;
+              }
+              .quick-actions {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                  gap: 1rem;
+                  margin-top: 2rem;
+              }
+              .action-card {
+                  background-color: #ffffff;
+                  border: 2px solid #e9ecef;
+                  border-radius: 8px;
+                  padding: 1.5rem;
+                  text-align: center;
+                  transition: all 0.3s ease;
+                  cursor: pointer;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              .action-card:hover {
+                  border-color: #007BFF;
+                  transform: translateY(-2px);
+                  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
+              }
+              .user-info, .comisiones-section {
+                  background-color: #f8f9fa;
+                  padding: 1.5rem;
+                  border-radius: 8px;
+                  margin-bottom: 2rem;
+                  border: 1px solid #dee2e6;
+              }
+              .comision-card {
+                  background: white;
+                  padding: 1rem;
+                  border-radius: 6px;
+                  margin: 0.5rem 0;
+                  border-left: 3px solid #007BFF;
+              }
+              .role-badge {
+                  background-color: #28a745;
+                  color: white;
+                  padding: 0.5rem 1rem;
+                  border-radius: 25px;
+                  font-weight: bold;
+                  display: inline-block;
+                  margin: 0.5rem 0;
+              }
+              .logout-btn {
+                  background-color: #007BFF;
+                  color: black;
+                  padding: 0.5rem 1rem;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  text-decoration: none;
+                  display: inline-block;
+                  transition: background-color 0.3s ease;
+              }
+              .logout-btn:hover {
+                  background-color: #dee2e6;
+              }
+/* Finaliza estilos dashboard */
 
 .hero {
     animation: fadeIn 1s ease-in-out;
@@ -286,6 +402,117 @@ main {
   gap: 25px; /* Este es el espacio de separación entre las tarjetas */
   padding: 25px; /* Espacio alrededor de todas las tarjetas */
 }
+
+/* --- Contenedor para Dividir la Pantalla --- */
+.split-container {
+    display: flex; /* Activa Flexbox, la magia para alinear elementos */
+    flex-wrap: wrap; /* Permite que los elementos se apilen si no caben */
+    gap: 30px; /* Espacio elegante entre las dos columnas */
+    padding: 20px; /* Espacio alrededor del contenedor principal */
+}
+
+/* --- Estilos para las Columnas --- */
+.form-column {
+    flex: 1; /* Permite que la columna crezca */
+    min-width: 350px; /* Ancho mínimo para que el formulario no se aplaste */
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    height: fit-content; /* Se ajusta a la altura del contenido */
+}
+
+.list-column {
+    flex: 2; /* Hace que esta columna sea el doble de ancha que la del formulario */
+    min-width: 350px;
+}
+
+/* --- Responsividad para Pantallas Pequeñas (Móviles) --- */
+@media (max-width: 992px) {
+    .split-container {
+        /* Cambiamos la dirección para que se apilen verticalmente */
+        flex-direction: column;
+    }
+}
+
+/* --- Estilos para la Nueva Lista de Usuarios --- */
+.user-list-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    /* Altura máxima y scroll */
+    max-height: 600px; /* Ajusta esta altura según tu preferencia */
+    overflow-y: auto; /* ¡La clave para el scroll! */
+    border: 1px solid #e0e0e0;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse; /* Une los bordes de las celdas */
+    text-align: left;
+}
+
+/* --- Cabecera de la Tabla --- */
+.user-table thead {
+    position: sticky; /* Fija la cabecera en la parte superior */
+    top: 0;
+    z-index: 10;
+}
+
+.user-table th {
+    background-color: #007bff; /* Azul principal de tu diseño */
+    color: white;
+    padding: 15px 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+/* --- Cuerpo y Filas de la Tabla --- */
+.user-table tbody tr {
+    border-bottom: 1px solid #e0e0e0; /* Línea separadora entre filas */
+    transition: background-color 0.2s ease;
+}
+
+.user-table tbody tr:nth-child(even) {
+    background-color: #f8f9fa; /* Color sutil para filas pares */
+}
+
+.user-table tbody tr:hover {
+    background-color: #e9ecef; /* Resaltado al pasar el mouse */
+}
+
+.user-table td {
+    padding: 15px 20px;
+    vertical-align: middle;
+}
+
+/* --- Estilos para Elementos Específicos --- */
+.user-table .status-active {
+    background-color: #d4edda; /* Verde del estado 'Activo' */
+    color: #155724;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.user-table .edit-button {
+    background-color: #6c757d; /* Un gris neutro */
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.user-table .edit-button:hover {
+    background-color: #5a6268;
+}
+
+
 
 /* Animaciones */
 @keyframes fadeIn {

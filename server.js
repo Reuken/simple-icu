@@ -318,7 +318,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         </div>
       `).join('');
     } else {
-      comisionesHtml = '<p>Es administrativo o no está asignado a ninguna comisión actualmente.</p>';
+      comisionesHtml = '<p>Es administrativo, directiva o no está asignado a ninguna comisión actualmente.</p>';
     }
 
     res.send(`
@@ -329,116 +329,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Dashboard ICU - ${usuario.nombre}</title>
           <link rel="stylesheet" href="estilos.css">
-          <style>
-              .perm-badge {
-                  font-size: 0.8rem;
-                  padding: 0.25rem 0.5rem;
-                  border-radius: 12px;
-                  font-weight: bold;
-                  display: inline-block;
-                  margin-top: 0.5rem;
-              }
-              .perm-badge {
-                  background-color: #28a745;
-                  color: white;
-              }
-              .perm-badge.view-only {
-                  background-color: #6c757d;
-                  color: white;
-              }
-              .dashboard-container {
-                  max-width: 1200px;
-                  margin: 2rem auto;
-                  padding: 0 1rem;
-              }
-              .welcome-card {
-                  background: linear-gradient(135deg, #007BFF, #0056b3);
-                  color: white;
-                  padding: 2rem;
-                  border-radius: 12px;
-                  margin-bottom: 2rem;
-                  text-align: center;
-                  box-shadow: 0 8px 32px rgba(0, 123, 255, 0.3);
-              }
-              .stats-grid {
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                  gap: 1rem;
-                  margin-bottom: 2rem;
-              }
-              .stat-card {
-                  background: white;
-                  padding: 1.5rem;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                  text-align: center;
-                  border-left: 4px solid #007BFF;
-              }
-              .stat-number {
-                  font-size: 2rem;
-                  font-weight: bold;
-                  color: #007BFF;
-              }
-              .quick-actions {
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                  gap: 1rem;
-                  margin-top: 2rem;
-              }
-              .action-card {
-                  background-color: #ffffff;
-                  border: 2px solid #e9ecef;
-                  border-radius: 8px;
-                  padding: 1.5rem;
-                  text-align: center;
-                  transition: all 0.3s ease;
-                  cursor: pointer;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-              }
-              .action-card:hover {
-                  border-color: #007BFF;
-                  transform: translateY(-2px);
-                  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
-              }
-              .user-info, .comisiones-section {
-                  background-color: #f8f9fa;
-                  padding: 1.5rem;
-                  border-radius: 8px;
-                  margin-bottom: 2rem;
-                  border: 1px solid #dee2e6;
-              }
-              .comision-card {
-                  background: white;
-                  padding: 1rem;
-                  border-radius: 6px;
-                  margin: 0.5rem 0;
-                  border-left: 3px solid #007BFF;
-              }
-              .role-badge {
-                  background-color: #28a745;
-                  color: white;
-                  padding: 0.5rem 1rem;
-                  border-radius: 25px;
-                  font-weight: bold;
-                  display: inline-block;
-                  margin: 0.5rem 0;
-              }
-              .logout-btn {
-                  background-color: #007BFF;
-                  color: black;
-                  padding: 0.5rem 1rem;
-                  border: none;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  text-decoration: none;
-                  display: inline-block;
-                  transition: background-color 0.3s ease;
-              }
-              .logout-btn:hover {
-                  background-color: #dee2e6;
-              }
-          </style>
       </head>
+
       <body>
           <nav>
               <a href="/dashboard" class="logo">ICU Dashboard</a>
@@ -448,8 +340,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   <a href="/logout" class="logout-btn">Cerrar Sesión</a>
               </div>
           </nav>
-
-          <div class="dashboard-container">
+        <div class="split-container">
+          
               <div class="welcome-card">
                   <h1>¡Bienvenido ${usuario.nombre}!</h1>
                   <span class="role-badge">${usuario.rol.replace('_', ' ').toUpperCase()}</span>
@@ -467,12 +359,13 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                   <h3>🏛️ Mis Comisiones</h3>
                   ${comisionesHtml}
               </div>
-
+            <div class="list-column">
               <h3>⚡ Módulos Disponibles</h3>
               <div class="quick-actions">
                   ${accionesHtml}
               </div>
-          </div>
+            </div>  
+        </div>  
       </body>
       </html>
     `);
@@ -487,35 +380,83 @@ app.get('/api/reportes/calidad-ocr', ReportController.getCalidadOCR);
 
 
 // =================== RUTAS DE USUARIOS ===================
+
 app.get('/usuarios', requireAuth, requireRole(['administrativo']), async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    
-    if (req.headers.accept === 'application/json') {
-      const resultado = await SistemaUsuarios.getAllUsers(page, limit);
-      res.json(resultado);
-    } else {
-      // Renderizar página HTML de usuarios
-      const resultado = await SistemaUsuarios.getAllUsers(page, limit);
-      const facultades = await Facultad.getAll();
-      
-      res.send(generateUsersPage(resultado, facultades, req.session.usuario));
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = 20; // O el límite que prefieras
+        
+        const usuariosData = await SistemaUsuarios.getAllUsers(page, limit);
+        const facultades = await Facultad.getAll(); // Asumiendo que tienes este método
+
+        // Pasamos el objeto 'usuariosData' completo y las facultades
+        res.send(generateUsuariosPage(usuariosData, facultades));
+    } catch (error) {
+        res.status(500).send("Error al cargar la página de usuarios.");
     }
-  } catch (error) {
-    console.error('Error obteniendo usuarios:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
 });
 
-app.post('/usuarios', requireAuth, requireRole(['administrativo']), async (req, res) => {
-  try {
-    const nuevoUsuario = await Usuario.create(req.body);
-    res.json({ success: true, usuario: nuevoUsuario });
-  } catch (error) {
-    console.error('Error creando usuario:', error);
-    res.status(500).json({ error: 'Error creando usuario', details: error.message });
-  }
+// REEMPLAZA ESTA RUTA EN TU CÓDIGO
+app.post('/api/usuarios/add', requireAuth, requireRole(['administrativo']), async (req, res) => {
+    try {
+        const { nombre, codigo, email, contrasena, tipo_usuario, facultad_id, gestion, es_estudiante, es_docente, funcion } = req.body;
+
+        // Hashear contraseña (si usas bcrypt en producción, mantenlo)
+        // const salt = await bcrypt.genSalt(10);
+        // const hashedContrasena = await bcrypt.hash(contrasena, salt);
+
+        // Construimos el objeto 'userData' que la clase Usuario.create espera
+        const userData = {
+            nombre,
+            codigo: parseInt(codigo),
+            email,
+            contrasena: contrasena, // Usando contraseña en texto plano como tu clase
+            tipo_usuario,
+            // Datos específicos del rol
+            facultad_id: tipo_usuario === 'consejero' ? parseInt(facultad_id) : null,
+            gestion: gestion || null,
+            es_estudiante: tipo_usuario === 'consejero' ? es_estudiante === 'on' : false,
+            es_docente: tipo_usuario === 'consejero' ? es_docente === 'on' : false,
+            es_directiva: false, // Asumimos que no se crea como directiva desde este form.
+            funcion: tipo_usuario === 'administrativo' ? funcion || 'Sin especificar' : null
+        };
+        
+        // La clase se encarga del resto
+        const nuevoUsuario = await Usuario.create(userData);
+
+        console.log(`✅ Usuario creado: ${nuevoUsuario.nombre}`);
+        res.redirect('/usuarios');
+    } catch (error) {
+        console.error('Error al añadir usuario:', error);
+        res.status(500).send('Error al crear el usuario. Verifique que el código y el email no estén ya registrados.');
+    }
+});
+
+// REEMPLAZA ESTA RUTA EN TU CÓDIGO
+app.post('/api/usuarios/edit/:id', requireAuth, requireRole(['administrativo']), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nombre, email, es_activo } = req.body; // Solo los campos permitidos y 'es_activo'
+
+        // El método update actual no es ideal, pero nos adaptamos a él.
+        // Primero, buscamos el usuario para tener una instancia de la clase.
+        const usuario = await Usuario.findById(id);
+        if (!usuario) {
+            return res.status(404).send('Usuario no encontrado.');
+        }
+
+        // Actualizamos los campos permitidos por el método update
+        await usuario.update({ nombre, email });
+        
+        // El estado 'es_activo' se maneja por separado, ya que update no lo soporta.
+        await usuario.setActive(es_activo === 'on');
+
+        console.log(`✅ Usuario actualizado: ID ${id}`);
+        res.redirect('/usuarios');
+    } catch (error) {
+        console.error('Error al editar usuario:', error);
+        res.status(500).send('Error al actualizar el usuario.');
+    }
 });
 
 // =================== RUTAS DE DOCUMENTOS ===================
@@ -663,11 +604,23 @@ app.get('/mi_espacio', requireAuth, requireRole(['administrativo', 'consejero'])
 
 // Pagina Usuarios
 
-function generateUsersPage(resultado, facultades, usuario) {
-  
-  const usuarios = resultado.rows || [];
-  const permisos = usuario.permisos;
-  
+function generateUsuariosPage(data, facultades) {
+
+  const { usuarios } = data; 
+
+    let usuariosHtml = usuarios.map(u => `
+        <div class="card">
+            <h3>${u.nombre}</h3>
+            <p><strong>Código:</strong> ${u.codigo}</p>
+            <p><strong>Email:</strong> ${u.email}</p>
+            <p><strong>Rol:</strong> ${u.detalle_rol || u.tipo_usuario}</p>
+            <p><strong>Estado:</strong> <span class="${u.es_activo ? 'status-active' : 'status-inactive'}">${u.es_activo ? 'Activo' : 'Inactivo'}</span></p>
+            <button class="cta-button" onclick="openEditModal(${JSON.stringify(u).replace(/"/g, '&quot;')})">Editar</button>
+        </div>
+    `).join('');
+
+    let facultadesOptions = facultades.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('');
+
   return `
     <!DOCTYPE html>
     <html lang="es">
@@ -677,193 +630,13 @@ function generateUsersPage(resultado, facultades, usuario) {
         <title>Gestión de Usuarios - ICU</title>
         <link rel="stylesheet" href="/estilos.css">
         <style>
-            .users-container {
-                max-width: 1200px;
-                margin: 2rem auto;
-                padding: 0 1rem;
-            }
-            .users-table {
-                background: white;
-                border-radius: 8px;
-                overflow: hidden;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                margin-top: 2rem;
-            }
-            .table-header {
-                background: #007BFF;
-                color: white;
-                padding: 1rem;
-                display: grid;
-                grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
-                gap: 1rem;
-                align-items: center;
-                font-weight: bold;
-            }
-            .table-row {
-                padding: 1rem;
-                display: grid;
-                grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
-                gap: 1rem;
-                align-items: center;
-                border-bottom: 1px solid #eee;
-                transition: background-color 0.3s ease;
-                overflow-wrap: break-word;
-            }
-            .table-row:hover {
-                background-color: #f8f9fa;
-            }
-            .status-badge {
-                padding: 0.25rem 0.5rem;
-                border-radius: 12px;
-                font-size: 0.8rem;
-                font-weight: bold;
-                text-align: center;
-            }
-            .status-active {
-                background-color: #d4edda;
-                color: #155724;
-            }
-            .status-inactive {
-                background-color: #f8d7da;
-                color: #721c24;
-            }
-            .user-type {
-                padding: 0.25rem 0.5rem;
-                border-radius: 4px;
-                font-size: 0.8rem;
-                text-transform: capitalize;
-            }
-            .type-administrativo {
-                background-color: #e3f2fd;
-                color: #1565c0;
-            }
-            .type-docente {
-                background-color: #f3e5f5;
-                color: #7b1fa2;
-            }
-            .type-estudiante {
-                background-color: #e8f5e8;
-                color: #2e7d32;
-            }
-            .btn {
-                padding: 0.5rem 1rem;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-                text-decoration: none;
-                display: inline-block;
-                font-size: 0.9rem;
-                transition: background-color 0.3s ease;
-            }
-            .btn-primary {
-                background-color: #007BFF;
-                color: white;
-            }
-            .btn-success {
-                background-color: #28a745;
-                color: white;
-            }
-            .btn-warning {
-                background-color: #ffc107;
-                color: #212529;
-            }
-            .btn-info {
-                background-color: #17a2b8;
-                color: white;
-            }
-            .btn-small {
-                padding: 0.25rem 0.5rem;
-                font-size: 0.8rem;
-                margin: 0 0.25rem;
-            }
-            .search-section {
-                background: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                margin-bottom: 1rem;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                display: flex;
-                gap: 1rem;
-                align-items: center;
-                flex-wrap: wrap;
-            }
-            .form-control {
-                padding: 0.5rem;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                font-size: 1rem;
-            }
-            .stats-cards {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 1rem;
-                margin-bottom: 2rem;
-            }
-            .stat-card {
-                background: white;
-                padding: 1.5rem;
-                border-radius: 8px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                text-align: center;
-            }
-            .stat-number {
-                font-size: 2rem;
-                font-weight: bold;
-                color: #007BFF;
-            }
-            .stat-label {
-                color: #666;
-                margin-top: 0.5rem;
-            }
-            .no-users {
-                text-align: center;
-                padding: 3rem;
-                color: #666;
-            }
-            .modal {
-                display: none;
-                position: fixed;
-                z-index: 1000;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0,0,0,0.5);
-            }
-            .modal-content {
-                background-color: white;
-                margin: 5% auto;
-                padding: 2rem;
-                border-radius: 8px;
-                width: 90%;
-                max-width: 500px;
-                position: relative;
-            }
-            .close {
-                position: absolute;
-                right: 1rem;
-                top: 1rem;
-                font-size: 1.5rem;
-                cursor: pointer;
-            }
-            .form-group {
-                margin-bottom: 1rem;
-            }
-            .form-group label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: bold;
-            }
-            @media (max-width: 768px) {
-                .table-header, .table-row {
-                    grid-template-columns: 1fr;
-                    text-align: left;
-                }
-                .search-section {
-                    flex-direction: column;
-                    align-items: stretch;
-                }
-            }
+            /* Estilos para el Modal */
+            .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+            .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; }
+            .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+            .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+            form label { display: block; margin-top: 10px; }
+            form input, form select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ddd; }
         </style>
     </head>
     <body>
@@ -875,286 +648,107 @@ function generateUsersPage(resultado, facultades, usuario) {
                 <a href="/facultades">🏛️ Facultades</a>
                 <a href="/comisiones">📋 Comisiones</a>
                 <a href="/documentos">📄 Documentos</a>
-                <span class="user-info-nav">👤 ${usuario.nombre}</span>
                 <a href="/logout" class="logout-btn">Cerrar Sesión</a>
             </div>
         </nav>
 
-        <div class="users-container">
-            <div class="welcome-card">
-                <h1>👥 Gestión de Usuarios</h1>
-                <p>Modulo de gestion de consejeros del ICU</p>
-            </div>
-
-            <!-- Búsqueda y filtros -->
-            <div class="search-section">
-                <input type="text" id="searchInput" placeholder="🔍 Buscar usuarios..." class="form-control" style="flex: 1; min-width: 200px;">
-                <select id="tipoFilter" class="form-control" style="width: 150px;">
-                    <option value="">Todos los tipos</option>
-                    <option value="administrativo">Administrativo</option>
-                    <option value="docente">Docente</option>
-                    <option value="estudiante">Estudiante</option>
-                </select>
-                <select id="estadoFilter" class="form-control" style="width: 120px;">
-                    <option value="">Todos</option>
-                    <option value="activo">Activos</option>
-                    <option value="inactivo">Inactivos</option>
-                </select>
-            </div>
-
-            <!-- Tabla de usuarios -->
-            ${resultado.usuarios.length > 0 ? `
-            <div class="users-table">
-                <div class="table-header">
-                    <span>👤 Usuario</span>
-                    <span>📧 Email</span>
-                    <span>🏷️ Tipo</span>
-                    <span>🏛️ Facultad</span>
-                    <span>📊 Estado</span>
-                    <span>⚙️ Acciones</span>
-                </div>
-                ${resultado.usuarios.map(u => `
-                <div class="table-row" data-tipo="${u.tipo_usuario}" data-activo="${u.es_activo}">
-                    <div>
-                        <strong>${u.nombre}</strong>
-                    </div>
-                    <div>${u.email}</div>
-                    <div>
-                        <span class="user-type type-${u.tipo_usuario}">${u.tipo_usuario}</span>
-                    </div>
-                    <div>${u.nombre_facultad || 'Sin asignar o administrativo'}</div>
-                    <div>
-                        <span class="status-badge ${u.es_activo ? 'status-active' : 'status-inactive'}">
-                            ${u.es_activo ? '✅ Activo' : '❌ Inactivo'}
-                        </span>
-                    </div>
-                    <div>
-                        ${permisos.cambiar_estado_usuarios ? `
-                        <button onclick="toggleUserStatus(${u.id}, ${u.es_activo})" 
-                                class="btn ${u.es_activo ? 'btn-warning' : 'btn-success'} btn-small">
-                            ${u.es_activo ? '⏸️' : '▶️'}
-                        </button>
-                        ` : ''}
-                    </div>
-                </div>
-                `).join('')}
-            </div>
-            ` : `
-            `}
-        </div>
-
-        <!-- Modal para crear/editar usuario -->
-        <div id="userModal" class="modal">
-            <div class="modal-content">
-                <span class="close" onclick="closeModal()">&times;</span>
-                <h3 id="modalTitle">➕ Nuevo Usuario</h3>
-                <form id="userForm">
-                    <input type="hidden" id="userId" name="id">
-                    
-                    <div class="form-group">
-                        <label for="nombre">Nombre:</label>
-                        <input type="text" id="nombre" name="nombre" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="apellido">Apellido:</label>
-                        <input type="text" id="apellido" name="apellido" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="email">Email:</label>
-                        <input type="email" id="email" name="email" class="form-control" required>
-                    </div>
-                    
-                    <div class="form-group">
+        <main>
+                <div class="split-container">
+                 <div class="form-column">
+                      <h2>Añadir Nuevo Usuario</h2>
+                      <form action="/api/usuarios/add" method="POST" class="form-container" onsubmit="return handleFormSubmit(event)">
+                        <label for="nombre">Nombre Completo:</label><input type="text" id="nombre" name="nombre" required>
+                        <label for="codigo">Código:</label><input type="number" id="codigo" name="codigo" required>
+                        <label for="email">Email:</label><input type="email" id="email" name="email" required>
+                        <label for="contrasena">Contraseña:</label><input type="password" id="contrasena" name="contrasena" required>
                         <label for="tipo_usuario">Tipo de Usuario:</label>
-                        <select id="tipo_usuario" name="tipo_usuario" class="form-control" required>
-                            <option value="">Seleccionar...</option>
+                        <select id="tipo_usuario" name="tipo_usuario" onchange="toggleConsejeroFields()" required>
                             <option value="administrativo">Administrativo</option>
-                            <option value="docente">Docente</option>
-                            <option value="estudiante">Estudiante</option>
+                            <option value="consejero">Consejero</option>
                         </select>
+                        <div id="consejero-fields" style="display:none;">
+                            <label for="facultad_id">Facultad:</label><select id="facultad_id" name="facultad_id">${facultadesOptions}</select>
+                            <label for="gestion">Gestión:</label><input type="text" id="gestion" name="gestion" placeholder="Ej: 2024-2026">
+                            <div><input type="checkbox" id="es_estudiante" name="es_estudiante"><label for="es_estudiante">Es Estudiante</label></div>
+                            <div><input type="checkbox" id="es_docente" name="es_docente"><label for="es_docente">Es Docente</label></div>
+                        </div>
+                        <button type="submit" class="cta-button">Añadir Usuario</button>
+                      </form>
+                  </div>
+                
+                <hr>
+               <div class="list-column">
+                    <h2>Usuarios Existentes</h2>
+                    <div class="user-list-container">
+                        <table class="user-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${usuarios.map(u => `
+                                    <tr>
+                                        <td><strong>${u.nombre}</strong><br><small>Código: ${u.codigo}</small></td>
+                                        <td>${u.detalle_rol || u.tipo_usuario}</td>
+                                        <td><span class="${u.es_activo ? 'status-active' : ''}">${u.es_activo ? 'Activo' : 'Inactivo'}</span></td>
+                                        <td>
+                                            <button class="edit-button" onclick="openEditModal(${JSON.stringify(u).replace(/"/g, '&quot;')})">
+                                                Editar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="facultad_id">Facultad:</label>
-                        <select id="facultad_id" name="facultad_id" class="form-control">
-                            <option value="">Sin asignar</option>
-                            ${facultades.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('')}
-                        </select>
-                    </div>
-                    
-                    <div class="form-group" id="passwordGroup">
-                        <label for="password">Contraseña:</label>
-                        <input type="password" id="password" name="password" class="form-control">
-                        <small>Dejar vacío para mantener la contraseña actual (solo en edición)</small>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                        <button type="button" onclick="closeModal()" class="btn" style="background: #6c757d; color: white;">Cancelar</button>
-                        <button type="submit" class="btn btn-success">💾 Guardar</button>
-                    </div>
+                </div>
+               </div> 
+            </main>
+
+            <div id="editModal" class="modal">
+              <div class="modal-content">
+                <span class="close" onclick="closeEditModal()">&times;</span>
+                <h2>Editar Usuario</h2>
+                <form id="editForm" method="POST">
+                  <input type="hidden" id="edit-id" name="id">
+                  <label for="edit-nombre">Nombre:</label><input type="text" id="edit-nombre" name="nombre" required>
+                  <label for="edit-codigo">Código:</label><input type="number" id="edit-codigo" name="codigo" required>
+                  <label for="edit-email">Email:</label><input type="email" id="edit-email" name="email" required>
+                  <label for="edit-tipo_usuario">Tipo:</label><select id="edit-tipo_usuario" name="tipo_usuario" required><option value="administrativo">Administrativo</option><option value="consejero">Consejero</option></select>
+                  <div><input type="checkbox" id="edit-es_activo" name="es_activo"><label for="edit-es_activo">Activo</label></div>
+                  <button type="submit" class="cta-button">Guardar Cambios</button>
                 </form>
+              </div>
             </div>
-        </div>
 
-        <script>
-            // Variables globales
-            let currentUsers = [];
-            
-            const resultado = await SistemaUsuarios.getAllUsers();
-            const usuarios = resultado.usuarios; // Extraer el array
-
-            // Para enlazar usuarios con facultad
-
-            const resultadoFac = await Facultad.getMiembros();
-            const usuariosFac = resultadoFac.usuarios; // Extraer el array
-
-            // Inicializar
-            document.addEventListener('DOMContentLoaded', function() {
-                currentUsers = ${JSON.stringify(usuarios)};
-                setupEventListeners();
-            });
-            
-            function setupEventListeners() {
-                // Búsqueda en tiempo real
-                document.getElementById('searchInput').addEventListener('input', filterUsers);
-                document.getElementById('tipoFilter').addEventListener('change', filterUsers);
-                document.getElementById('estadoFilter').addEventListener('change', filterUsers);
-                
-                // Form submit
-                document.getElementById('userForm').addEventListener('submit', handleUserSubmit);
-            }
-            
-            function filterUsers() {
-                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                const tipoFilter = document.getElementById('tipoFilter').value;
-                const estadoFilter = document.getElementById('estadoFilter').value;
-                
-                const rows = document.querySelectorAll('.table-row');
-                
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    const tipo = row.dataset.tipo;
-                    const activo = row.dataset.activo === 'true';
-                    
-                    let show = true;
-                    
-                    // Filtro de texto
-                    if (searchTerm && !text.includes(searchTerm)) {
-                        show = false;
-                    }
-                    
-                    // Filtro de tipo
-                    if (tipoFilter && tipo !== tipoFilter) {
-                        show = false;
-                    }
-                    
-                    // Filtro de estado
-                    if (estadoFilter === 'activo' && !activo) {
-                        show = false;
-                    } else if (estadoFilter === 'inactivo' && activo) {
-                        show = false;
-                    }
-                    
-                    row.style.display = show ? 'grid' : 'none';
-                });
-            }
-            
-            function openCreateModal() {
-                document.getElementById('modalTitle').textContent = '➕ Nuevo Usuario';
-                document.getElementById('userForm').reset();
-                document.getElementById('userId').value = '';
-                document.getElementById('passwordGroup').querySelector('input').required = true;
-                document.getElementById('userModal').style.display = 'block';
-            }
-            
-            function editUser(id) {
-                const user = currentUsers.find(u => u.id === id);
-                if (!user) return;
-                
-                document.getElementById('modalTitle').textContent = '✏️ Editar Usuario';
-                document.getElementById('userId').value = user.id;
-                document.getElementById('nombre').value = user.nombre;
-                document.getElementById('apellido').value = user.apellido;
-                document.getElementById('email').value = user.email;
-                document.getElementById('tipo_usuario').value = user.tipo_usuario;
-                document.getElementById('facultad_id').value = user.facultad_id || '';
-                document.getElementById('password').value = '';
-                document.getElementById('passwordGroup').querySelector('input').required = false;
-                document.getElementById('userModal').style.display = 'block';
-            }
-            
-            function closeModal() {
-                document.getElementById('userModal').style.display = 'none';
-            }
-            
-            async function handleUserSubmit(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(e.target);
-                const userData = Object.fromEntries(formData.entries());
-                
-                const isEdit = userData.id !== '';
-                const url = isEdit ? \`/api/usuarios/\${userData.id}\` : '/api/usuarios';
-                const method = isEdit ? 'PUT' : 'POST';
-                
-                try {
-                    const response = await fetch(url, {
-                        method: method,
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(userData)
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok) {
-                        alert(\`✅ Usuario \${isEdit ? 'actualizado' : 'creado'} exitosamente\`);
-                        closeModal();
-                        location.reload(); // Recargar para ver cambios
-                    } else {
-                        alert('❌ Error: ' + result.error);
-                    }
-                } catch (error) {
-                    alert('❌ Error de conexión: ' + error.message);
+             <script>
+              function toggleConsejeroFields() {
+                const tipo = document.getElementById('tipo_usuario').value;
+                document.getElementById('consejero-fields').style.display = tipo === 'consejero' ? 'block' : 'none';
+              }
+              function openEditModal(user) {
+                document.getElementById('editForm').action = '/api/usuarios/edit/' + user.id;
+                document.getElementById('edit-id').value = user.id;
+                document.getElementById('edit-nombre').value = user.nombre;
+                document.getElementById('edit-codigo').value = user.codigo;
+                document.getElementById('edit-email').value = user.email;
+                document.getElementById('edit-tipo_usuario').value = user.tipo_usuario;
+                document.getElementById('edit-es_activo').checked = user.es_activo;
+                document.getElementById('editModal').style.display = 'block';
+              }
+              function closeEditModal() {
+                document.getElementById('editModal').style.display = 'none';
+              }
+              window.onclick = function(event) {
+                if (event.target == document.getElementById('editModal')) {
+                  closeEditModal();
                 }
-            }
-            
-            async function toggleUserStatus(userId, currentStatus) {
-                const action = currentStatus ? 'desactivar' : 'activar';
-                
-                if (!confirm(\`¿Estás seguro de que quieres \${action} este usuario?\`)) {
-                    return;
-                }
-                
-                try {
-                    const response = await fetch(\`/api/usuarios/\${userId}/toggle-status\`, {
-                        method: 'PATCH'
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (response.ok) {
-                        alert(\`✅ Usuario \${action}do exitosamente\`);
-                        location.reload();
-                    } else {
-                        alert('❌ Error: ' + result.error);
-                    }
-                } catch (error) {
-                    alert('❌ Error de conexión: ' + error.message);
-                }
-            }
-            
-            // Cerrar modal al hacer click fuera
-            window.onclick = function(event) {
-                const modal = document.getElementById('userModal');
-                if (event.target === modal) {
-                    closeModal();
-                }
-            }
-        </script>
+              }
+            </script>
     </body>
     </html>
   `;
