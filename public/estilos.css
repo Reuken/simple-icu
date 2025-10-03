@@ -183,13 +183,13 @@ main {
                   padding: 0 1rem;
               }
               .welcome-card {
-                  background: linear-gradient(135deg, #007BFF, #0056b3);
-                  color: white;
-                  padding: 2rem;
+                  background: linear-gradient(135deg, #2a95e2ff, #cfe2ff); /* Gradiente de azules muy claros */
+                  /* Se elimina 'color: white;' para que herede el color oscuro del body */
+                  padding: 2.5rem 2rem;
                   border-radius: 12px;
                   margin-bottom: 2rem;
-                  text-align: center;
-                  box-shadow: 0 8px 32px rgba(0, 123, 255, 0.3);
+                  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Sombra más sutil y neutral */
+                  border: 1px solid #dee2e6; /* Borde ligero para definir la tarjeta */
               }
               .stats-grid {
                   display: grid;

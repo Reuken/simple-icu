@@ -246,100 +246,50 @@ function getPermisos(tipo_usuario, rol) {
   return permisos;
 }
 
-// Dashboard con permisos
 app.get('/dashboard', requireAuth, async (req, res) => {
   try {
     const usuario = req.session.usuario;
     const stats = await SistemaUsuarios.getStats();
     const permisos = usuario.permisos;
     
-    // Generar tarjetas según permisos
+    // Generar tarjetas de módulos disponibles
     let accionesHtml = '';
-    
     if (permisos.ver_usuarios) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/usuarios'">
-          <h4>👥 Usuarios</h4>
-          <p>Gestionar usuarios del sistema</p>
-          ${permisos.crear_usuarios ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}
-        </div>
-      `;
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/usuarios'"><h4>👥 Usuarios</h4><p>Gestionar usuarios del sistema</p>${permisos.crear_usuarios ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
     }
-
     if (permisos.ver_documentos) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/documentos'">
-          <h4>📄 Documentos</h4>
-          <p>Gestionar documentos del ICU</p>
-          ${permisos.subir_documentos ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}
-        </div>
-      `;
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/documentos'"><h4>📄 Documentos</h4><p>Gestionar documentos del ICU</p>${permisos.subir_documentos ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
     }
-
     if (permisos.ver_comisiones) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/comisiones'">
-          <h4>🏛️ Comisiones</h4>
-          <p>Ver todas las comisiones</p>
-          <span class="perm-badge view-only">👁️ Solo lectura</span>
-        </div>
-      `;
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/comisiones'"><h4>🏛️ Comisiones</h4><p>Ver todas las comisiones</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
     }
-
     if (permisos.ver_reportes) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/reportes'">
-          <h4>📊 Reportes</h4>
-          <p>Ver reportes y análisis NLP</p>
-          ${permisos.generar_reportes ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}
-        </div>
-      `;
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/reportes'"><h4>📊 Reportes</h4><p>Ver reportes y análisis NLP</p>${permisos.generar_reportes ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
     }
-
     if (permisos.ver_facultades) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/facultades'">
-          <h4>🎓 Facultades</h4>
-          <p>Información de facultades y miembros</p>
-          <span class="perm-badge view-only">👁️ Solo lectura</span>
-        </div>
-      `;
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/facultades'"><h4>🎓 Facultades</h4><p>Información de facultades y miembros</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
     }
-
     if (permisos.ver_mi_espacio) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/mi_espacio'">
-          <h4>👔 Mi espacio ICU-ADM</h4>
-          <p>Pagina con informacion importante</p>
-          <span class="perm-badge">✏️ Gestión completa</span>
-        </div>
-      `;
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/mi_espacio'"><h4>👔 Mi espacio ICU</h4><p>Informacion importante para los consejeros</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
+    }
+    if (permisos.gestionar_sesion) {
+      accionesHtml += `<div class="action-card" onclick="window.location.href='/gestion_sesion'"><h4>🗓️ Gestionar Sesión</h4><p>Editar la información de la próxima sesión.</p><span class="perm-badge">✏️ Gestión completa</span></div>`;
     }
 
-    if (permisos.gestionar_sesion) {
-      accionesHtml += `
-        <div class="action-card" onclick="window.location.href='/gestion_sesion'">
-          <h4>🗓️ Gestionar Sesion del ICU</h4>
-          <p>Editar la información de la próxima sesión del ICU.</p>
-          <span class="perm-badge">✏️ Gestión completa</span>
-        </div>
-      `;
-  }
-
-    // Generar comisiones HTML
+    // Generar tarjetas de comisiones del usuario
     let comisionesHtml = '';
     if (usuario.comisiones && usuario.comisiones.length > 0) {
       comisionesHtml = usuario.comisiones.map(comision => `
-        <div class="comision-card">
-          <h4>${comision.nombre}</h4>
-          <p>${comision.descripcion || 'Sin descripción'}</p>
-          <small>Asignado: ${new Date(comision.fecha_asignacion).toLocaleDateString()}</small>
+        <div class="comision-item">
+          <strong>${comision.nombre}</strong>
+          <small>${comision.descripcion || 'Sin descripción'}</small>
         </div>
       `).join('');
     } else {
-      comisionesHtml = '<p>Es administrativo, directiva o no está asignado a ninguna comisión actualmente.</p>';
+      comisionesHtml = '<p class="no-comision-msg">No está asignado a ninguna comisión actualmente.</p>';
     }
 
+    // Enviar la página rediseñada
     res.send(`
       <!DOCTYPE html>
       <html lang="es">
@@ -347,44 +297,112 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Dashboard ICU - ${usuario.nombre}</title>
-          <link rel="stylesheet" href="estilos.css">
+          <link rel="stylesheet" href="/estilos.css">
+          <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+          <style>
+              body { background-color: #f4f7f9; }
+              .main-container { max-width: 1400px; margin: 2rem auto; padding: 1rem; }
+              .welcome-card {
+                  background: linear-gradient(135deg, #2a95e2ff, #cfe2ff); /* Gradiente de azules muy claros */
+                  /* Se elimina 'color: white;' para que herede el color oscuro del body */
+                  padding: 2.5rem 2rem;
+                  border-radius: 12px;
+                  margin-bottom: 2rem;
+                  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Sombra más sutil y neutral */
+                  border: 1px solid #dee2e6; /* Borde ligero para definir la tarjeta */
+}
+              .welcome-card h1 { font-size: 2.5rem; font-weight: 500; margin: 0 0 0.5rem 0; }
+              .welcome-card p { font-size: 1.2rem; opacity: 0.9; margin: 0; }
+              .dashboard-grid {
+                  display: grid;
+                  grid-template-columns: 1fr;
+                  gap: 2rem;
+              }
+              @media (min-width: 1024px) {
+                  .dashboard-grid { grid-template-columns: 1fr 3fr; }
+              }
+              .sidebar-column .info-card {
+                  background-color: #ffffff; border-radius: 12px; padding: 2rem;
+                  box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eef;
+                  margin-bottom: 2rem;
+              }
+              .sidebar-column h3 {
+                  font-size: 1.5rem; font-weight: 500; color: #333; margin-top: 0;
+                  border-bottom: 2px solid #007BFF; padding-bottom: 0.5rem; display: inline-block;
+              }
+              .user-details p { font-size: 1rem; color: #555; line-height: 1.6; }
+              .user-details p strong { font-weight: 500; color: #333; }
+              .comision-item {
+                  background-color: #f8f9fa; border-left: 3px solid #007BFF;
+                  padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;
+              }
+              .comision-item strong { display: block; }
+              .no-comision-msg { font-style: italic; color: #6c757d; }
+              
+              .main-column h3 { font-size: 1.8rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
+              .quick-actions {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                  gap: 1.5rem;
+              }
+              .action-card {
+                  background-color: #ffffff; border: 1px solid #eef; border-radius: 12px;
+                  padding: 1.5rem; text-align: center; transition: all 0.3s ease;
+                  cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+              }
+              .action-card:hover {
+                  transform: translateY(-5px); box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+                  border-color: #007BFF;
+              }
+              .action-card h4 { font-size: 1.2rem; margin: 0 0 0.5rem 0; color: #0056b3; }
+              .action-card p { margin: 0; color: #6c757d; }
+              .perm-badge {
+                  font-size: 0.8rem; padding: 0.3rem 0.8rem; border-radius: 12px;
+                  font-weight: 500; display: inline-block; margin-top: 1rem;
+              }
+              .perm-badge { background-color: #d4edda; color: #155724; }
+              .perm-badge.view-only { background-color: #e9ecef; color: #495057; }
+          </style>
       </head>
-
       <body>
           <nav>
               <a href="/dashboard" class="logo">ICU Dashboard</a>
               <div class="nav-links">
                   <a href="/dashboard">Dashboard</a>
-                  <span class="user-info-nav">👤 ${usuario.nombre} (${usuario.descripcion_rol})</span>
+                  <span class="user-info-nav">👤 ${usuario.nombre}</span>
                   <a href="/logout" class="logout-btn">Cerrar Sesión</a>
               </div>
           </nav>
-        <div class="split-container">
-          
+
+          <div class="main-container">
               <div class="welcome-card">
-                  <h1>¡Bienvenido ${usuario.nombre}!</h1>
-                  <span class="role-badge">${usuario.rol.replace('_', ' ').toUpperCase()}</span>
+                  <h1>¡Bienvenido, ${usuario.nombre}!</h1>
+                  <p>Usted ha ingresado como: <strong>${usuario.descripcion_rol}</strong></p>
               </div>
 
-              <div class="user-info">
-                  <h3>📋 Información del Usuario</h3>
-                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                      <div><strong>ID:</strong> ${usuario.id}</div>
-                      <div><strong>Código:</strong> ${usuario.codigo}</div>
-                  </div>
+              <div class="dashboard-grid">
+                  <aside class="sidebar-column">
+                      <div class="info-card">
+                          <h3>📋 Mi Información</h3>
+                          <div class="user-details">
+                              <p><strong>Código:</strong> ${usuario.codigo}</p>
+                              <p><strong>Email:</strong> ${usuario.email}</p>
+                              <p><strong>Tipo:</strong> ${usuario.tipo_usuario}</p>
+                          </div>
+                      </div>
+                      <div class="info-card">
+                          <h3>🏛️ Mis Comisiones</h3>
+                          ${comisionesHtml}
+                      </div>
+                  </aside>
+                  <section class="main-column">
+                      <h3>⚡ Módulos Disponibles</h3>
+                      <div class="quick-actions">
+                          ${accionesHtml}
+                      </div>
+                  </section>
               </div>
-
-              <div class="comisiones-section">
-                  <h3>🏛️ Mis Comisiones</h3>
-                  ${comisionesHtml}
-              </div>
-            <div class="list-column">
-              <h3>⚡ Módulos Disponibles</h3>
-              <div class="quick-actions">
-                  ${accionesHtml}
-              </div>
-            </div>  
-        </div>  
+          </div>
       </body>
       </html>
     `);
@@ -400,23 +418,28 @@ app.get('/api/reportes/calidad-ocr', ReportController.getCalidadOCR);
 
 // =================== RUTAS DE USUARIOS ===================
 
-app.get('/usuarios', requireAuth, requireRole(['administrativo']), async (req, res) => {
+app.get('/usuarios', requireAuth, requireRole(['administrativo', 'superadmin']), async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 20; // O el límite que prefieras
         
-        const usuariosData = await SistemaUsuarios.getAllUsers(page, limit);
+        const usuariosData = await SistemaUsuarios.getAllUsers({
+            page,
+            limit,
+            includeInactive: true 
+        });
+
         const facultades = await Facultad.getAll(); // Asumiendo que tienes este método
 
         // Pasamos el objeto 'usuariosData' completo y las facultades
-        res.send(generateUsuariosPage(usuariosData, facultades));
+        res.send(generateUsuariosPage(usuariosData, facultades, req.session.usuario));
     } catch (error) {
         res.status(500).send("Error al cargar la página de usuarios.");
     }
 });
 
 
-app.post('/api/usuarios/add', requireAuth, requireRole(['administrativo']), async (req, res) => {
+app.post('/api/usuarios/add', requireAuth, requireRole(['superadmin']), async (req, res) => {
     try {
         const { nombre, codigo, email, contrasena, tipo_usuario, facultad_id, gestion, es_estudiante, es_docente, funcion } = req.body;
 
@@ -452,7 +475,7 @@ app.post('/api/usuarios/add', requireAuth, requireRole(['administrativo']), asyn
 });
 
 
-app.post('/api/usuarios/edit/:id', requireAuth, requireRole(['administrativo']), async (req, res) => {
+app.post('/api/usuarios/edit/:id', requireAuth, requireRole(['administrativo', 'superadmin']), async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre, email, es_activo } = req.body; // Solo los campos permitidos y 'es_activo'
@@ -728,156 +751,242 @@ app.get('/mi_espacio', requireAuth, requireRole(['consejero']), async (req, res)
 
 // Pagina Usuarios
 
-function generateUsuariosPage(data, facultades) {
+function generateUsuariosPage(data, facultades, usuario) {
 
-  const { usuarios } = data; 
+  // Asegurarse de que los datos de entrada son correctos
+    const usuarios = data.usuarios || [];
+    const { permisos } = usuario;
 
-    let usuariosHtml = usuarios.map(u => `
-        <div class="card">
-            <h3>${u.nombre}</h3>
-            <p><strong>Código:</strong> ${u.codigo}</p>
-            <p><strong>Email:</strong> ${u.email}</p>
-            <p><strong>Rol:</strong> ${u.detalle_rol || u.tipo_usuario}</p>
-            <p><strong>Estado:</strong> <span class="${u.es_activo ? 'status-active' : 'status-inactive'}">${u.es_activo ? 'Activo' : 'Inactivo'}</span></p>
-            <button class="cta-button" onclick="openEditModal(${JSON.stringify(u).replace(/"/g, '&quot;')})">Editar</button>
-        </div>
-    `).join('');
+    // [NUEVO] Separar usuarios en activos e inactivos
+    const usuariosActivos = usuarios.filter(u => u.es_activo);
+    const usuariosInactivos = usuarios.filter(u => !u.es_activo);
 
     let facultadesOptions = facultades.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('');
 
-  return `
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Gestión de Usuarios - ICU</title>
-        <link rel="stylesheet" href="/estilos.css">
-        <style>
-            /* Estilos para el Modal */
-            .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
-            .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; }
-            .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
-            .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
-            form label { display: block; margin-top: 10px; }
-            form input, form select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ddd; }
-        </style>
-    </head>
-    <body>
-        <nav>
-            <a href="/dashboard" class="logo">ICU Dashboard</a>
-            <div class="nav-links">
-                <a href="/dashboard">Dashboard</a>
-                <a href="/usuarios" class="active">👥 Usuarios</a>
-                <a href="/facultades">🏛️ Facultades</a>
-                <a href="/comisiones">📋 Comisiones</a>
-                <a href="/documentos">📄 Documentos</a>
-                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+  // [NUEVO] El formulario de creación solo se genera si el usuario tiene el permiso
+  const formularioCrearUsuario = `
+    <div class="info-card">
+      <h3>Añadir Nuevo Usuario</h3>
+      <form action="/api/usuarios/add" method="POST" class="form-container">
+        <div class="form-grid">
+            <div class="form-group"><label for="nombre">Nombre Completo:</label><input type="text" id="nombre" name="nombre" required></div>
+            <div class="form-group"><label for="codigo">Código:</label><input type="number" id="codigo" name="codigo" required></div>
+            <div class="form-group"><label for="email">Email:</label><input type="email" id="email" name="email" required></div>
+            <div class="form-group"><label for="contrasena">Contraseña:</label><input type="password" id="contrasena" name="contrasena" required></div>
+            <div class="form-group full-width">
+                <label for="tipo_usuario">Tipo de Usuario:</label>
+                <select id="tipo_usuario" name="tipo_usuario" onchange="toggleConsejeroFields()" required>
+                    <option value="consejero">Consejero</option>
+                    <option value="administrativo">Administrativo</option>
+                    <option value="superadmin">Superadmin</option>
+                </select>
             </div>
-        </nav>
+            <div id="consejero-fields" class="full-width" style="display:none;">
+                <div class="form-grid">
+                    <div class="form-group"><label for="facultad_id">Facultad:</label><select id="facultad_id" name="facultad_id">${facultadesOptions}</select></div>
+                    <div class="form-group"><label for="gestion">Gestión:</label><input type="text" id="gestion" name="gestion" placeholder="Ej: 2024-2026"></div>
+                    <div class="form-group checkbox-group">
+                        <div><input type="checkbox" id="es_estudiante" name="es_estudiante"><label for="es_estudiante">Es Estudiante</label></div>
+                        <div><input type="checkbox" id="es_docente" name="es_docente"><label for="es_docente">Es Docente</label></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button type="submit" class="cta-button" style="width: 100%; margin-top: 20px;">Añadir Usuario</button>
+      </form>
+    </div>
+  `; 
 
-        <main>
-                <div class="split-container">
-                 <div class="form-column">
-                      <h2>Añadir Nuevo Usuario</h2>
-                      <form action="/api/usuarios/add" method="POST" class="form-container" onsubmit="return handleFormSubmit(event)">
-                        <label for="nombre">Nombre Completo:</label><input type="text" id="nombre" name="nombre" required>
-                        <label for="codigo">Código:</label><input type="number" id="codigo" name="codigo" required>
-                        <label for="email">Email:</label><input type="email" id="email" name="email" required>
-                        <label for="contrasena">Contraseña:</label><input type="password" id="contrasena" name="contrasena" required>
-                        <label for="tipo_usuario">Tipo de Usuario:</label>
-                        <select id="tipo_usuario" name="tipo_usuario" onchange="toggleConsejeroFields()" required>
-                            <option value="administrativo">Administrativo</option>
-                            <option value="consejero">Consejero</option>
-                            <option value="consejero">Administrador del Sistema</option>
-                        </select>
-                        <div id="consejero-fields" style="display:none;">
-                            <label for="facultad_id">Facultad:</label><select id="facultad_id" name="facultad_id">${facultadesOptions}</select>
-                            <label for="gestion">Gestión:</label><input type="text" id="gestion" name="gestion" placeholder="Ej: 2024-2026">
-                            <div><input type="checkbox" id="es_estudiante" name="es_estudiante"><label for="es_estudiante">Es Estudiante</label></div>
-                            <div><input type="checkbox" id="es_docente" name="es_docente"><label for="es_docente">Es Docente</label></div>
-                        </div>
-                        <button type="submit" class="cta-button">Añadir Usuario</button>
-                      </form>
-                  </div>
-               <hr>
+  return `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Gestión de Usuarios - ICU</title>
+          <link rel="stylesheet" href="/estilos.css">
+          <style>
+          /* [NUEVO] Estilos para las pestañas */
+            .tabs { display: flex; border-bottom: 2px solid #dee2e6; margin-bottom: 2rem; }
+            .tab-button { background: none; border: none; padding: 1rem 1.5rem; cursor: pointer; font-size: 1.1rem; font-weight: 500; color: #6c757d; border-bottom: 3px solid transparent; transition: all 0.3s ease; }
+            .tab-button.active { color: #007BFF; border-bottom-color: #007BFF; }
+            .tab-content { display: none; }
+            .tab-content.active { display: block; }
 
-               <div class="list-column">
-                    <h2>Usuarios Existentes</h2>
-                    <div class="user-list-container">
-                        <table class="user-table">
-                            <thead>
-                                <tr>
-                                    <th>Usuario</th>
-                                    <th>Rol</th>
-                                    <th>Estado</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
+            .users-table { width: 100%; border-collapse: collapse; }
+            .users-table th, .users-table td { padding: 1rem 1.5rem; text-align: left; }
+            .users-table thead { background-color: #f8f9fa; color: #333; }
+            .users-table tbody tr { border-bottom: 1px solid #eef; transition: background-color 0.3s ease; }
+            .users-table tbody tr:hover { background-color: #f8f9fa; }
+            
+            .status-badge { padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 500; }
+            .status-active { background-color: #d4edda; color: #155724; }
+            .status-inactive { background-color: #f8d7da; color: #721c24; }
+
+            body { background-color: #f4f7f9; }
+            .main-container { max-width: 1400px; margin: 2rem auto; padding: 1rem; }
+            .info-card { background-color: #ffffff; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eef; margin-bottom: 2rem; }
+            .info-card h3 { font-size: 1.5rem; font-weight: 500; color: #333; margin-top: 0; border-bottom: 2px solid #007BFF; padding-bottom: 0.5rem; display: inline-block; }
+            
+            .users-table { width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+            .users-table th, .users-table td { padding: 1rem 1.5rem; text-align: left; }
+            .users-table thead { background-color: #007BFF; color: white; }
+            .users-table tbody tr { border-bottom: 1px solid #eef; transition: background-color 0.3s ease; }
+            .users-table tbody tr:last-child { border-bottom: none; }
+            .users-table tbody tr:hover { background-color: #f8f9fa; }
+            
+            .status-badge { padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; font-weight: 500; }
+            .status-active { background-color: #d4edda; color: #155724; }
+            .status-inactive { background-color: #f8d7da; color: #721c24; }
+
+            .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+            .modal-content { background-color: #fefefe; margin: 10% auto; padding: 2rem; border: 1px solid #888; width: 90%; max-width: 500px; border-radius: 12px; }
+            .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+            .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .form-group { display: flex; flex-direction: column; }
+            .full-width { grid-column: 1 / -1; }
+
+              /* Estilos para el Modal */
+              .modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+              .modal-content { background-color: #fefefe; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px; }
+              .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+              .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+              form label { display: block; margin-top: 10px; }
+              form input, form select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ddd; }
+          </style>
+      </head>
+      <body>
+          <nav>
+              <a href="/dashboard" class="logo">ICU Dashboard</a>
+              <div class="nav-links">
+                  <a href="/dashboard">Dashboard</a>
+                  <a href="/usuarios" class="active">👥 Usuarios</a>
+                  <a href="/facultades">🏛️ Facultades</a>
+                  <a href="/comisiones">📋 Comisiones</a>
+                  <a href="/documentos">📄 Documentos</a>
+                  <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+              </div>
+          </nav>
+
+          <main class="main-container">
+             <div class="welcome-card">
+                <h1>Gestión de Usuarios</h1>
+                <p>Administración de cuentas del sistema ICU.</p>
+            </div>
+
+            ${permisos.crear_usuarios ? formularioCrearUsuario : ''}
+
+            <div class="info-card">
+                <div class="tabs">
+                    <button class="tab-button active" onclick="openTab(event, 'activos')">Usuarios Activos (${usuariosActivos.length})</button>
+                    <button class="tab-button" onclick="openTab(event, 'inactivos')">Usuarios Inactivos (${usuariosInactivos.length})</button>
+                </div>
+
+                <div id="activos" class="tab-content active">
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="users-table">
+                            <thead><tr><th>Usuario</th><th>Rol o Gestion</th><th>Estado</th><th>Acciones</th></tr></thead>
                             <tbody>
-                                ${usuarios.map(u => `
+                                ${usuariosActivos.length > 0 ? usuariosActivos.map(u => `
                                     <tr>
                                         <td><strong>${u.nombre}</strong><br><small>Código: ${u.codigo}</small></td>
                                         <td>${u.detalle_rol || u.tipo_usuario}</td>
-                                        <td><span class="${u.es_activo ? 'status-active' : ''}">${u.es_activo ? 'Activo' : 'Inactivo'}</span></td>
-                                        <td>
-                                            <button class="edit-button" onclick="openEditModal(${JSON.stringify(u).replace(/"/g, '&quot;')})">
-                                                Editar
-                                            </button>
-                                        </td>
+                                        <td><span class="status-badge status-active">Activo</span></td>
+                                        <td><button class="cta-button" style="padding: 8px 15px; font-size: 0.9rem;" onclick='openEditModal(${JSON.stringify(u).replace(/"/g, "&quot;")})'>Editar</button></td>
                                     </tr>
-                                `).join('')}
+                                `).join('') : '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No hay usuarios activos.</td></tr>'}
                             </tbody>
                         </table>
                     </div>
                 </div>
-               </div> 
-            </main>
 
-            <div id="editModal" class="modal">
-              <div class="modal-content">
-                <span class="close" onclick="closeEditModal()">&times;</span>
-                <h2>Editar Usuario</h2>
-                <form id="editForm" method="POST">
-                  <input type="hidden" id="edit-id" name="id">
-                  <label for="edit-nombre">Nombre:</label><input type="text" id="edit-nombre" name="nombre" required>
-                  <label for="edit-codigo">Código:</label><input type="number" id="edit-codigo" name="codigo" required>
-                  <label for="edit-email">Email:</label><input type="email" id="edit-email" name="email" required>
-                  <label for="edit-tipo_usuario">Tipo:</label><select id="edit-tipo_usuario" name="tipo_usuario" required><option value="administrativo">Administrativo</option><option value="consejero">Consejero</option></select>
-                  <div><input type="checkbox" id="edit-es_activo" name="es_activo"><label for="edit-es_activo">Activo</label></div>
-                  <button type="submit" class="cta-button">Guardar Cambios</button>
-                </form>
-              </div>
+                <div id="inactivos" class="tab-content">
+                    <div class="table-responsive" style="overflow-x: auto;">
+                        <table class="users-table">
+                            <thead><tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+                            <tbody>
+                                ${usuariosInactivos.length > 0 ? usuariosInactivos.map(u => `
+                                    <tr>
+                                        <td><strong>${u.nombre}</strong><br><small>Código: ${u.codigo}</small></td>
+                                        <td>${u.detalle_rol || u.tipo_usuario}</td>
+                                        <td><span class="status-badge status-inactive">Inactivo</span></td>
+                                        <td><button class="cta-button" style="padding: 8px 15px; font-size: 0.9rem;" onclick='openEditModal(${JSON.stringify(u).replace(/"/g, "&quot;")})'>Editar</button></td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No hay usuarios inactivos.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+        </main>
 
-             <script>
-              function toggleConsejeroFields() {
-                const tipo = document.getElementById('tipo_usuario').value;
-                document.getElementById('consejero-fields').style.display = tipo === 'consejero' ? 'block' : 'none';
+
+              <div id="editModal" class="modal">
+                  <div class="modal-content">
+                    <span class="close" onclick="closeEditModal()">&times;</span>
+                    <h2>Editar Usuario</h2>
+                    <form id="editForm" method="POST">
+                      <input type="hidden" id="edit-id" name="id">
+                      <div class="form-grid">
+                        <div class="form-group"><label for="edit-nombre">Nombre:</label><input type="text" id="edit-nombre" name="nombre" required></div>
+                        <div class="form-group"><label for="edit-codigo">Código:</label><input type="number" id="edit-codigo" name="codigo" required></div>
+                        <div class="form-group full-width"><label for="edit-email">Email:</label><input type="email" id="edit-email" name="email" required></div>
+                        <div class="form-group full-width"><label for="edit-tipo_usuario">Tipo:</label><select id="edit-tipo_usuario" name="tipo_usuario" required ${!permisos.crear_usuarios ? 'disabled' : ''}><option value="consejero">Consejero</option><option value="administrativo">Administrativo</option><option value="superadmin">Superadmin</option></select></div>
+                        <div><input type="checkbox" id="edit-es_activo" name="es_activo"><label for="edit-es_activo"> Activo</label></div>
+                      </div>
+                      <button type="submit" class="cta-button" style="width: 100%; margin-top: 20px;">Guardar Cambios</button>
+                    </form>
+                  </div>
+              </div>
+
+              <script>
+
+          // Script para manejar las pestañas
+          function openTab(evt, tabName) {
+              var i, tabcontent, tabbuttons;
+              tabcontent = document.getElementsByClassName("tab-content");
+              for (i = 0; i < tabcontent.length; i++) {
+                  tabcontent[i].style.display = "none";
               }
-              function openEditModal(user) {
-                document.getElementById('editForm').action = '/api/usuarios/edit/' + user.id;
-                document.getElementById('edit-id').value = user.id;
-                document.getElementById('edit-nombre').value = user.nombre;
-                document.getElementById('edit-codigo').value = user.codigo;
-                document.getElementById('edit-email').value = user.email;
-                document.getElementById('edit-tipo_usuario').value = user.tipo_usuario;
-                document.getElementById('edit-es_activo').checked = user.es_activo;
-                document.getElementById('editModal').style.display = 'block';
+              tabbuttons = document.getElementsByClassName("tab-button");
+              for (i = 0; i < tabbuttons.length; i++) {
+                  tabbuttons[i].className = tabbuttons[i].className.replace(" active", "");
               }
-              function closeEditModal() {
-                document.getElementById('editModal').style.display = 'none';
-              }
-              window.onclick = function(event) {
-                if (event.target == document.getElementById('editModal')) {
-                  closeEditModal();
-                }
-              }
-            </script>
-    </body>
-    </html>
-  `;
-}
+              document.getElementById(tabName).style.display = "block";
+              evt.currentTarget.className += " active";
+          }
+          // Por defecto, mostrar la primera pestaña (activos)
+          document.addEventListener('DOMContentLoaded', () => {
+              document.getElementById('activos').style.display = 'block';
+          });
+
+          function toggleConsejeroFields() {
+            const tipo = document.getElementById('tipo_usuario').value;
+            document.getElementById('consejero-fields').style.display = tipo === 'consejero' ? 'block' : 'none';
+          }
+          function openEditModal(user) {
+            document.getElementById('editForm').action = '/api/usuarios/edit/' + user.id;
+            document.getElementById('edit-id').value = user.id;
+            document.getElementById('edit-nombre').value = user.nombre;
+            document.getElementById('edit-codigo').value = user.codigo;
+            document.getElementById('edit-email').value = user.email;
+            document.getElementById('edit-tipo_usuario').value = user.tipo_usuario;
+            document.getElementById('edit-es_activo').checked = user.es_activo;
+            document.getElementById('editModal').style.display = 'block';
+          }
+          function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+          }
+          window.onclick = function(event) {
+            if (event.target == document.getElementById('editModal')) {
+              closeEditModal();
+            }
+          }
+        </script>
+      </body>
+      </html>
+    `;
+  }
 
 //Pagina de Informacion comisiones 
  
@@ -967,19 +1076,18 @@ function generateFacultadesPage(facultades) {
     </html>
   `;
 }
-
 function generateMiEspacioPage(usuario, proximaSesion) {
   const { nombre, comisiones, descripcion_rol } = usuario;
-  const comisionesHtml = comisiones.map(c => c.nombre).join(', ') || 'Ninguna asignada';
+  const comisionesHtml = comisiones.map(c => `<span class="comision-tag">${c.nombre}</span>`).join(' ') || '<span class="comision-tag none">Ninguna asignada</span>';
 
   // Formatear los datos de la sesión que vienen de la DB
   const sesionData = {
       tipo: proximaSesion.tipo || 'No definida',
       lugar: proximaSesion.lugar || 'No definido',
-      fecha: proximaSesion.fecha ? new Date(proximaSesion.fecha).toLocaleDateString('es-ES') : 'No definida',
+      fecha: proximaSesion.fecha ? new Date(proximaSesion.fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida',
       hora: proximaSesion.hora || 'No definida',
       temas: proximaSesion.temas ? proximaSesion.temas.split('|') : ['No hay temas definidos'],
-      documentos: proximaSesion.documentos || [], // La query ahora devuelve un array de objetos
+      documentos: proximaSesion.documentos || [],
       reglamentos: proximaSesion.reglamentos ? proximaSesion.reglamentos.split('|') : ['Sin sugerencias']
   };
 
@@ -989,11 +1097,125 @@ function generateMiEspacioPage(usuario, proximaSesion) {
     <head>
         <meta charset="UTF-8">  
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Inicio - Mi espacio - ICU</title>
+        <title>Mi Espacio - ICU</title>
         <link rel="stylesheet" href="/estilos.css">
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
         <style>
-            //CSS
+            /* --- Estilos para un diseño más elegante --- */
+            body {
+                background-color: #f4f7f9; /* Un gris muy claro para el fondo */
+            }
+            .main-container {
+                max-width: 1200px;
+                margin: 2rem auto;
+                padding: 1rem;
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            @media (min-width: 992px) {
+                .main-container {
+                    grid-template-columns: 1fr 2fr; /* Columna de perfil más pequeña que la de sesión */
+                }
+            }
+            .info-card {
+                background-color: #ffffff;
+                border-radius: 12px;
+                padding: 2rem;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                border: 1px solid #eef;
+            }
+            .info-card h3 {
+                font-size: 1.5rem;
+                font-weight: 500;
+                color: #333;
+                margin-top: 0;
+                margin-bottom: 1.5rem;
+                border-bottom: 2px solid #007BFF;
+                padding-bottom: 0.5rem;
+                display: inline-block;
+            }
+            .info-card p {
+                font-size: 1rem;
+                color: #555;
+                margin-bottom: 1rem;
+                line-height: 1.6;
+            }
+            .info-card p strong {
+                font-weight: 500;
+                color: #333;
+            }
+            .comision-tag {
+                display: inline-block;
+                background-color: #e3f2fd;
+                color: #1565c0;
+                padding: 0.3rem 0.8rem;
+                border-radius: 15px;
+                font-size: 0.9rem;
+                margin-right: 5px;
+                margin-bottom: 5px;
+            }
+            .comision-tag.none {
+                background-color: #f8f9fa;
+                color: #6c757d;
+            }
+            
+            .session-card {
+                background: linear-gradient(135deg, #007BFF, #0056b3);
+                color: white;
+                border-radius: 12px;
+                padding: 2rem;
+                box-shadow: 0 8px 30px rgba(0, 123, 255, 0.3);
+            }
+            .session-card h3, .session-card h4 {
+                font-weight: 500;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+                padding-bottom: 0.5rem;
+                margin-bottom: 1rem;
+            }
+            .session-details-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 2rem;
+            }
+            .detail-item {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 1rem;
+                border-radius: 8px;
+            }
+            .detail-item strong {
+                display: block;
+                font-size: 0.9rem;
+                opacity: 0.8;
+                margin-bottom: 0.25rem;
+            }
+            .badge {
+                background-color: #28a745;
+                padding: 0.3rem 0.8rem;
+                border-radius: 15px;
+                font-size: 0.9rem;
+                font-weight: bold;
+            }
+            ul {
+                list-style-type: none;
+                padding-left: 0;
+            }
+            ul li {
+                background-color: rgba(255, 255, 255, 0.1);
+                margin-bottom: 0.5rem;
+                padding: 0.75rem;
+                border-radius: 4px;
+                transition: background-color 0.3s ease;
+            }
+            ul li:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+            ul li a {
+                color: white;
+                text-decoration: none;
+                font-weight: 500;
+            }
         </style>
     </head>
     <body>
@@ -1006,31 +1228,46 @@ function generateMiEspacioPage(usuario, proximaSesion) {
             </div>
         </nav>
 
-        <section class="hero">
-        <main class="comision-grid-container">
-            <div class="comision-card">
+        <main class="main-container">
+            <div class="info-card">
                 <h3>Mi Perfil</h3>
                 <p><strong>Nombre:</strong> ${nombre}</p>
-                <p><strong>Comisiones:</strong> ${comisionesHtml}</p>
                 <p><strong>Rol:</strong> ${descripcion_rol}</p>
+                <p><strong>Comisiones Asignadas:</strong></p>
+                <div>${comisionesHtml}</div>
             </div>
-            <div class="comision-card">
+
+            <div class="session-card">
                 <h3>Próxima Sesión del ICU</h3>
-                <div class="session-details">
-                    <p><strong>Tipo:</strong> <span class="badge">${sesionData.tipo}</span></p>
-                    <p><strong>Lugar:</strong> ${sesionData.lugar}</p>
-                    <p><strong>Fecha y Hora:</strong> ${sesionData.fecha} a las ${sesionData.hora}</p>
+                <div class="session-details-grid">
+                    <div class="detail-item">
+                        <strong>Tipo:</strong>
+                        <span class="badge">${sesionData.tipo}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Fecha:</strong>
+                        <span>${sesionData.fecha}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Hora:</strong>
+                        <span>${sesionData.hora}</span>
+                    </div>
+                    <div class="detail-item" style="grid-column: 1 / -1;">
+                        <strong>Lugar:</strong>
+                        <span>${sesionData.lugar}</span>
+                    </div>
                 </div>
-                <h4>Temas a Tratar:</h4>
+
+                <h4>Temas a Tratar</h4>
                 <ul>${sesionData.temas.map(t => `<li>${t}</li>`).join('')}</ul>
-                <hr>
-                <h4>Documentos para la Sesión:</h4>
+                
+                <h4>Documentos para la Sesión</h4>
                 <ul>${sesionData.documentos.length > 0 ? sesionData.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download">${d.titulo}</a></li>`).join('') : '<li>No hay documentos adjuntos.</li>'}</ul>
-                <h4>Reglamentos a Revisar:</h4>
+                
+                <h4>Reglamentos a Revisar</h4>
                 <ul>${sesionData.reglamentos.map(r => `<li>${r}</li>`).join('')}</ul>
             </div>
         </main>
-        </section>
     </body>
     </html>
   `;

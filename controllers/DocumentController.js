@@ -1482,7 +1482,7 @@ static async getDocumentos(req, res) {
                     reglamento.contenido_texto || ''
                 );
 
-                if (similitud > 0.15) { // Umbral de similitud del 15% (puedes ajustarlo)
+                if (similitud > 0.05) { // Umbral de similitud del 50% (ajustable)
                     sugerencias.push({
                         id: reglamento.id,
                         titulo: reglamento.titulo,

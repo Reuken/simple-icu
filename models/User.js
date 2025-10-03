@@ -273,44 +273,47 @@ class Usuario {
 // Clase para operaciones de sistema
 class SistemaUsuarios {
   // Obtener todos los usuarios con paginación
-  static async getAllUsers(page = 1, limit = 10) {
-    try {
-      const offset = (page - 1) * limit;
-      
-      const result = await query(`
-        SELECT u.*, f.nombre AS nombre_facultad, 
-               CASE 
-                 WHEN u.tipo_usuario = 'administrativo' THEN a.funcion
-                 WHEN u.tipo_usuario = 'consejero' THEN 
-                   CASE 
-                     WHEN c.es_directiva THEN 'Directiva'
-                     WHEN c.es_docente THEN 'Docente - ' || f.nombre
-                     WHEN c.es_estudiante THEN 'Estudiante - ' || f.nombre
-                   END
-               END as detalle_rol
+  static async getAllUsers(options = {}) {
+    const { page = 1, limit = 20, includeInactive = false } = options;
+    const offset = (page - 1) * limit;
+
+    // Condición 'WHERE' dinámica
+    let whereClause = '';
+    if (!includeInactive) {
+        whereClause = 'WHERE u.es_activo = true';
+    }
+
+    const queryText = `
+        SELECT 
+            u.id, u.nombre, u.codigo, u.email, u.tipo_usuario, u.es_activo,
+            CASE 
+                WHEN u.tipo_usuario = 'consejero' THEN ci.gestion
+                WHEN u.tipo_usuario = 'administrativo' THEN a.gestion
+                ELSE NULL 
+            END as detalle_rol,
+            f.nombre as nombre_facultad
         FROM usuarios u
+        LEFT JOIN consejeros_icu ci ON u.id = ci.usuario_id
         LEFT JOIN administrativos a ON u.id = a.usuario_id
-        LEFT JOIN consejeros_icu c ON u.id = c.usuario_id
-        LEFT JOIN facultades f ON c.facultad_id = f.id
-        WHERE u.es_activo = true
+        LEFT JOIN facultades f ON ci.facultad_id = f.id
+        ${whereClause}
         ORDER BY u.nombre
         LIMIT $1 OFFSET $2
-      `, [limit, offset]);
+    `;
 
-      const countResult = await query('SELECT COUNT(*) FROM usuarios WHERE es_activo = true');
-      
-      return {
+    const countQuery = `SELECT COUNT(*) FROM usuarios u ${whereClause}`;
+
+    const result = await query(queryText, [limit, offset]);
+    const countResult = await query(countQuery);
+    const total_usuarios = parseInt(countResult.rows[0].count);
+
+    return {
         usuarios: result.rows,
-        total: parseInt(countResult.rows[0].count),
+        total: total_usuarios,
         page: page,
-        limit: limit,
-        totalPages: Math.ceil(countResult.rows[0].count / limit)
-      };
-    } catch (error) {
-      console.error('Error obteniendo usuarios:', error);
-      throw error;
-    }
-  }
+        totalPages: Math.ceil(total_usuarios / limit)
+    };
+}
 
   // Obtener estadísticas del sistema
   static async getStats() {
