@@ -230,11 +230,11 @@ class ReportController {
             <nav>
                 <a href="/dashboard" class="logo">ICU Dashboard</a>
                 <div class="nav-links">
-                    <a href="/dashboard">Dashboard</a>
+                    <a href="/dashboard"> 🖥️ Dashboard</a>
                     <a href="/documentos">📄 Documentos</a>
                     <a href="/reportes" class="active">📊 Reportes</a>
                     <span class="user-info-nav">👤 ${usuario.nombre}</span>
-                    <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                    <a href="/logout" class="logout-btn"> ⏻️ Cerrar Sesión</a>
                 </div>
             </nav>
 
@@ -284,14 +284,6 @@ class ReportController {
                     <h3>🔍 Análisis de Calidad de Procesamiento OCR</h3>
                     <div id="ocrQualityContent">
                         <div class="loading">Analizando calidad OCR...</div>
-                    </div>
-                </div>
-
-                <!-- Análisis Temporal -->
-                <div class="chart-container">
-                    <h3>📈 Análisis Temporal de Documentos</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="temporalChart"></canvas>
                     </div>
                 </div>
                 

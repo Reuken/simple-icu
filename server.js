@@ -211,17 +211,18 @@ function getPermisos(tipo_usuario, rol) {
     crear_usuarios: false,
     ver_documentos: false,
     subir_documentos: false,
-    ver_comisiones: false,
-    gestionar_comisiones: false,
+    ver_comisiones: false, 
+//  gestionar_comisiones: false,
     ver_reportes: false,
-    generar_reportes: false,
+//  generar_reportes: false,
     ver_facultades: false,
-    gestionar_facultades: false,
-    ver_mi_espacio: false
+//  gestionar_facultades: false,
+    ver_mi_espacio: false,
+    gestionar_sesion:false
   };
 
-  if (tipo_usuario === 'administrativo') {
-    // Administrativos tienen todos los permisos
+  if (tipo_usuario === 'superadmin') {
+    // Superadmin tienen todos los permisos
     Object.keys(permisos).forEach(key => {
       permisos[key] = true;
     });
@@ -231,8 +232,17 @@ function getPermisos(tipo_usuario, rol) {
     permisos.ver_comisiones = true;
     permisos.ver_facultades = true;
     permisos.ver_mi_espacio = true;
-  }
 
+  } else if (tipo_usuario === 'administrativo') {
+    // Administratio ve y gestiona pero no crea usuarios
+    permisos.ver_documentos = true;
+    permisos.ver_comisiones = true;
+    permisos.ver_facultades = true;
+    permisos.ver_usuarios = true;
+    permisos.ver_reportes = true;
+    permisos.subir_documentos = true;
+    permisos.gestionar_sesion = true;
+  }
   return permisos;
 }
 
@@ -306,6 +316,15 @@ app.get('/dashboard', requireAuth, async (req, res) => {
       `;
     }
 
+    if (permisos.gestionar_sesion) {
+      accionesHtml += `
+        <div class="action-card" onclick="window.location.href='/gestion_sesion'">
+          <h4>🗓️ Gestionar Sesion del ICU</h4>
+          <p>Editar la información de la próxima sesión del ICU.</p>
+          <span class="perm-badge">✏️ Gestión completa</span>
+        </div>
+      `;
+  }
 
     // Generar comisiones HTML
     let comisionesHtml = '';
@@ -396,7 +415,7 @@ app.get('/usuarios', requireAuth, requireRole(['administrativo']), async (req, r
     }
 });
 
-// REEMPLAZA ESTA RUTA EN TU CÓDIGO
+
 app.post('/api/usuarios/add', requireAuth, requireRole(['administrativo']), async (req, res) => {
     try {
         const { nombre, codigo, email, contrasena, tipo_usuario, facultad_id, gestion, es_estudiante, es_docente, funcion } = req.body;
@@ -432,7 +451,7 @@ app.post('/api/usuarios/add', requireAuth, requireRole(['administrativo']), asyn
     }
 });
 
-// REEMPLAZA ESTA RUTA EN TU CÓDIGO
+
 app.post('/api/usuarios/edit/:id', requireAuth, requireRole(['administrativo']), async (req, res) => {
     try {
         const { id } = req.params;
@@ -476,6 +495,9 @@ app.get('/api/documentos/:id/download', requireAuth, requireRole(['administrativ
   DocumentController.downloadDocumento(req, res);
 });
 
+app.get('/api/documentos/:id/preview', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+  DocumentController.previewDocumento(req, res);
+});
 // =================== RUTAS DE COMISIONES ===================
 app.get('/comisiones', requireAuth, requireRole(['administrativo', 'consejero']), async (req, res) => {
   try {
@@ -564,6 +586,85 @@ app.get('/facultades', requireAuth, requireRole(['administrativo', 'consejero'])
     }
 });
 
+// =================== RUTAS DE GESTIONAR SESION ===================
+// --- GESTIÓN DE SESIÓN (SOLO ADMIN) ---
+app.get('/gestion_sesion', requireAuth, requireRole(['administrativo', 'superadmin']), async (req, res) => {
+    try {
+        // [CORREGIDO] Manejo seguro: si no hay sesión, se usa un objeto vacío
+        const sesionResult = await pool.query('SELECT * FROM sesiones ORDER BY fecha DESC, hora DESC LIMIT 1');
+        const sesionActual = sesionResult.rows[0] || {}; 
+
+        // Obtener los últimos 30 documentos para el selector
+        const documentosResult = await pool.query('SELECT id, titulo FROM documentos ORDER BY fecha_ingreso DESC LIMIT 30');
+        const documentosRecientes = documentosResult.rows;
+
+        // Obtener documentos ya asociados a la sesión actual
+        // [CORREGIDO] Se usa 'sesionActual.id || 0' para evitar errores si la sesión no existe
+        const docsAsociadosResult = await pool.query('SELECT documento_id FROM sesion_documentos WHERE sesion_id = $1', [sesionActual.id || 0]);
+        const docsAsociadosIds = docsAsociadosResult.rows.map(r => r.documento_id);
+
+        // Pasamos todos los datos a la función que genera el HTML
+        res.send(generateGestionSesionPage(sesionActual, documentosRecientes, docsAsociadosIds));
+    } catch (error) {
+        console.error('Error al cargar página de gestión de sesión:', error);
+        res.status(500).send('Error al cargar la página de gestión de la sesión.');
+    }
+});
+
+app.post('/api/sesion/update', requireAuth, requireRole(['administrativo', 'superadmin']), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const { sesion_id, tipo, lugar, fecha, hora, temas_recurrentes, temas_nuevos, documentos } = req.body;
+        
+        // Combinar temas recurrentes y nuevos
+        let temasArray = temas_recurrentes ? (Array.isArray(temas_recurrentes) ? temas_recurrentes : [temas_recurrentes]) : [];
+        if (temas_nuevos) {
+            temasArray = [...temasArray, ...temas_nuevos.split('\n').map(t => t.trim()).filter(t => t)];
+        }
+        const temasString = temasArray.join('|');
+
+        // [NUEVO] Lógica de sugerencia de reglamentos
+        const idsDocumentosSeleccionados = documentos ? (Array.isArray(documentos) ? documentos : [documentos]).map(id => parseInt(id)) : [];
+        const reglamentosSugeridos = await DocumentController.sugerirReglamentos(idsDocumentosSeleccionados);
+        const reglamentosString = reglamentosSugeridos.join('|');
+        
+        let currentSesionId = sesion_id;
+
+        if (currentSesionId) { // Actualizar sesión
+            await client.query(
+                'UPDATE sesiones SET tipo=$1, lugar=$2, fecha=$3, hora=$4, temas=$5, reglamentos=$6, updated_at=NOW() WHERE id=$7',
+                [tipo, lugar, fecha, hora, temasString, reglamentosString, currentSesionId]
+            );
+        } else { // Crear nueva sesión
+            const result = await client.query(
+                'INSERT INTO sesiones (tipo, lugar, fecha, hora, temas, reglamentos) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+                [tipo, lugar, fecha, hora, temasString, reglamentosString]
+            );
+            currentSesionId = result.rows[0].id;
+        }
+
+        // Gestionar documentos asociados
+        await client.query('DELETE FROM sesion_documentos WHERE sesion_id = $1', [currentSesionId]);
+        if (req.body.documentos && idsDocumentosSeleccionados.length > 0) {
+            const docValues = idsDocumentosSeleccionados.map(docId => `(${currentSesionId}, ${docId})`).join(',');
+            await client.query(`INSERT INTO sesion_documentos (sesion_id, documento_id) VALUES ${docValues}`);
+        }
+
+        await client.query('COMMIT');
+        res.redirect('/gestion_sesion');
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error al actualizar la sesión:', error);
+        res.status(500).send('Error al guardar la información de la sesión.');
+    } finally {
+        client.release();
+    }
+});
+
+
 // Logout
 app.get('/logout', (req, res) => {
   const userName = req.session.usuario ? req.session.usuario.nombre : 'Usuario';
@@ -597,9 +698,32 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// =================== RUTAS A MI ESPACIO ===================
-app.get('/mi_espacio', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
-  res.send(generateMiEspacioPage(req.session.usuario));
+// =================== RUTAS A MI ESPACIO ICU ===================
+
+app.get('/mi_espacio', requireAuth, requireRole(['consejero']), async (req, res) => {
+    try {
+        const usuario = req.session.usuario;
+        
+        // [NUEVO] Obtenemos la última sesión de la base de datos
+        const sesionQuery = `
+            SELECT s.*, 
+                   (SELECT json_agg(json_build_object('id', d.id, 'titulo', d.titulo))
+                    FROM documentos d
+                    JOIN sesion_documentos sd ON d.id = sd.documento_id
+                    WHERE sd.sesion_id = s.id) as documentos
+            FROM sesiones s
+            ORDER BY s.fecha DESC, s.hora DESC
+            LIMIT 1
+        `;
+        const sesionResult = await pool.query(sesionQuery);
+        
+        const proximaSesion = sesionResult.rows[0] || {};
+        res.send(generateMiEspacioPage(usuario, proximaSesion));
+
+    } catch (error) {
+        console.error('Error al cargar Mi Espacio ICU:', error);
+        res.status(500).send('Error al cargar la página.');
+    }
 });
 
 // Pagina Usuarios
@@ -665,6 +789,7 @@ function generateUsuariosPage(data, facultades) {
                         <select id="tipo_usuario" name="tipo_usuario" onchange="toggleConsejeroFields()" required>
                             <option value="administrativo">Administrativo</option>
                             <option value="consejero">Consejero</option>
+                            <option value="consejero">Administrador del Sistema</option>
                         </select>
                         <div id="consejero-fields" style="display:none;">
                             <label for="facultad_id">Facultad:</label><select id="facultad_id" name="facultad_id">${facultadesOptions}</select>
@@ -675,8 +800,8 @@ function generateUsuariosPage(data, facultades) {
                         <button type="submit" class="cta-button">Añadir Usuario</button>
                       </form>
                   </div>
-                
-                <hr>
+               <hr>
+
                <div class="list-column">
                     <h2>Usuarios Existentes</h2>
                     <div class="user-list-container">
@@ -843,31 +968,20 @@ function generateFacultadesPage(facultades) {
   `;
 }
 
-function generateMiEspacioPage(usuario) {
-
+function generateMiEspacioPage(usuario, proximaSesion) {
   const { nombre, comisiones, descripcion_rol } = usuario;
   const comisionesHtml = comisiones.map(c => c.nombre).join(', ') || 'Ninguna asignada';
 
-   // Datos estáticos de la próxima sesión (un admin podría cambiar esto en el futuro)
-    const proximaSesion = {
-        tipo: 'Ordinaria',
-        lugar: 'Sala de Conferencias - Edificio Central',
-        fecha: '17/09/2025',
-        hora: '15:00 PM',
-        temas: [
-            'Revisión del presupuesto para la gestión 2026',
-            'Aprobación de la nueva malla curricular de Ingeniería Informática',
-            'Análisis de solicitudes de año sabático'
-        ],
-        documentos: [ // Esto se podría hacer dinámico en el futuro
-            { id: 1, titulo: 'Propuesta Presupuesto 2026.pdf' },
-            { id: 2, titulo: 'Malla Curricular Ing. Inf. - Propuesta Final.pdf' }
-        ],
-        reglamentos: [
-            'Reglamento de Año Sabático',
-            'Reglamento de Aprobación Curricular'
-        ]
-    };
+  // Formatear los datos de la sesión que vienen de la DB
+  const sesionData = {
+      tipo: proximaSesion.tipo || 'No definida',
+      lugar: proximaSesion.lugar || 'No definido',
+      fecha: proximaSesion.fecha ? new Date(proximaSesion.fecha).toLocaleDateString('es-ES') : 'No definida',
+      hora: proximaSesion.hora || 'No definida',
+      temas: proximaSesion.temas ? proximaSesion.temas.split('|') : ['No hay temas definidos'],
+      documentos: proximaSesion.documentos || [], // La query ahora devuelve un array de objetos
+      reglamentos: proximaSesion.reglamentos ? proximaSesion.reglamentos.split('|') : ['Sin sugerencias']
+  };
 
   return `
     <!DOCTYPE html>
@@ -894,28 +1008,28 @@ function generateMiEspacioPage(usuario) {
 
         <section class="hero">
         <main class="comision-grid-container">
-                <div class="comision-card">
-                    <p><strong>Nombre:</strong> ${nombre}</p>
-                    <p><strong>Comisiones:</strong> ${comisionesHtml}</p>
-                    <p><strong>Rol:</strong> ${descripcion_rol}</p>
+            <div class="comision-card">
+                <h3>Mi Perfil</h3>
+                <p><strong>Nombre:</strong> ${nombre}</p>
+                <p><strong>Comisiones:</strong> ${comisionesHtml}</p>
+                <p><strong>Rol:</strong> ${descripcion_rol}</p>
+            </div>
+            <div class="comision-card">
+                <h3>Próxima Sesión del ICU</h3>
+                <div class="session-details">
+                    <p><strong>Tipo:</strong> <span class="badge">${sesionData.tipo}</span></p>
+                    <p><strong>Lugar:</strong> ${sesionData.lugar}</p>
+                    <p><strong>Fecha y Hora:</strong> ${sesionData.fecha} a las ${sesionData.hora}</p>
                 </div>
-
-                <div class="comision-card">
-                    <h3>Próxima Sesión del ICU</h3>
-                    <div class="session-details">
-                        <p><strong>Tipo:</strong> <span class="badge">${proximaSesion.tipo}</span></p>
-                        <p><strong>Lugar:</strong> ${proximaSesion.lugar}</p>
-                        <p><strong>Fecha y Hora:</strong> ${proximaSesion.fecha} a las ${proximaSesion.hora}</p>
-                    </div>
-                    <h4>Temas a Tratar:</h4>
-                    <ul>${proximaSesion.temas.map(t => `<li>${t}</li>`).join('')}</ul>
-                    <hr>
-                    <h4>Documentos para la Sesión:</h4>
-                    <ul>${proximaSesion.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download">${d.titulo}</a></li>`).join('')}</ul>
-                    <h4>Reglamentos a Revisar:</h4>
-                    <ul>${proximaSesion.reglamentos.map(r => `<li>${r}</li>`).join('')}</ul>
-                </div>
-            </main>
+                <h4>Temas a Tratar:</h4>
+                <ul>${sesionData.temas.map(t => `<li>${t}</li>`).join('')}</ul>
+                <hr>
+                <h4>Documentos para la Sesión:</h4>
+                <ul>${sesionData.documentos.length > 0 ? sesionData.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download">${d.titulo}</a></li>`).join('') : '<li>No hay documentos adjuntos.</li>'}</ul>
+                <h4>Reglamentos a Revisar:</h4>
+                <ul>${sesionData.reglamentos.map(r => `<li>${r}</li>`).join('')}</ul>
+            </div>
+        </main>
         </section>
     </body>
     </html>
@@ -923,6 +1037,128 @@ function generateMiEspacioPage(usuario) {
 }
 
 
+function generateGestionSesionPage(sesion, documentos, docsAsociadosIds) {
+
+    const lugares = [ // Puedes expandir esta lista o moverla a la DB en el futuro
+        'Salón Provincia - Yapacani',
+        'Salón Auditorio - Facultad de Ciencias Veterinarias',
+        'Salón Auditorio - Facultad de Ciencias Humanidades'
+    ];
+
+    const temasRecurrentes = [
+        'Lectura de correspondencia',
+        'Informe de comisiones',
+        'Temas varios',
+        'Aprobación de actas'
+    ];
+
+    // [CORREGIDO] Asegurarse de que los datos existan y sean arrays
+    const temasGuardados = sesion.temas ? sesion.temas.split('|').map(t => t.trim()) : [];
+    const reglamentosGuardados = sesion.reglamentos ? sesion.reglamentos.split('|').map(r => r.trim()) : [];
+    const docsAsociados = Array.isArray(docsAsociadosIds) ? docsAsociadosIds : [];
+
+    // [CORREGIDO] Formatear fecha y hora para los inputs
+    const fechaFormatted = sesion.fecha ? new Date(sesion.fecha).toISOString().split('T')[0] : '';
+    const horaFormatted = sesion.hora || '';
+
+    // [CORREGIDO] El bucle para las opciones de documentos ahora funciona
+    let documentosOptions = documentos.map(d => {
+        const isSelected = docsAsociados.includes(d.id) ? 'selected' : '';
+        return `<option value="${d.id}" ${isSelected}>${d.titulo}</option>`;
+    }).join('');
+
+    return `
+        <!DOCTYPE html><html lang="es">
+        <head>
+            <meta charset="UTF-8"><title>Gestionar Sesión</title>
+            <link rel="stylesheet" href="/estilos.css">
+            <style>
+                /* [NUEVO] Estilos para el nuevo diseño del formulario */
+                .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 30px; }
+                .form-group { display: flex; flex-direction: column; }
+                .full-width { grid-column: 1 / -1; }
+                .checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; border: 1px solid #eee; padding: 10px; border-radius: 5px; }
+                .checkbox-group div { display: flex; align-items: center; }
+            </style>
+        </head>
+        
+        <body>
+          <nav>
+            <a href="/dashboard" class="logo">ICU Dashboard</a>
+            <div class="nav-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+            </div>
+          </nav>
+       
+            <main class="container">
+                <h2 style="text-align: center;">Gestionar Próxima Sesión</h2>
+                 <form action="/api/sesion/update" method="POST" class="form-container">
+                    <input type="hidden" name="sesion_id" value="${sesion.id || ''}">
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tipo">Tipo de Sesión:</label>
+                            <select id="tipo" name="tipo" required>
+                                <option value="Ordinaria" ${sesion.tipo === 'Ordinaria' ? 'selected' : ''}>Ordinaria</option>
+                                <option value="Extraordinaria" ${sesion.tipo === 'Extraordinaria' ? 'selected' : ''}>Extraordinaria</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lugar">Lugar:</label>
+                            <select id="lugar" name="lugar" required>
+                                ${lugares.map(l => `<option value="${l}" ${sesion.lugar === l ? 'selected' : ''}>${l}</option>`).join('')}
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="fecha">Fecha:</label>
+                            <input type="date" id="fecha" name="fecha" value="${fechaFormatted}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="hora">Hora:</label>
+                            <input type="time" id="hora" name="hora" value="${horaFormatted}" required>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label>Temas Recurrentes:</label>
+                            <div class="checkbox-group">
+                                ${temasRecurrentes.map(t => `
+                                    <div>
+                                        <input type="checkbox" id="tema_${t.replace(/\s+/g, '')}" name="temas_recurrentes" value="${t}" ${temasGuardados.includes(t) ? 'checked' : ''}>
+                                        <label for="tema_${t.replace(/\s+/g, '')}">${t}</label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="temas_nuevos">Temas Nuevos (uno por línea):</label>
+                            <textarea name="temas_nuevos" rows="4">${
+                                temasGuardados.filter(t => !temasRecurrentes.includes(t)).join('\n')
+                            }</textarea>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="documentos">Documentos para la sesión (Ctrl+Click para selección múltiple):</label>
+                            <select name="documentos" multiple size="8">${documentosOptions}</select>
+                        </div>
+
+                        <div class="form-group full-width">
+                            <label for="reglamentos">Reglamentos a revisar (Sugeridos por el sistema, uno por línea):</label>
+                            <textarea name="reglamentos" rows="3">${reglamentosGuardados.join('\n')}</textarea>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="cta-button" style="width: 100%; margin-top: 20px;">Guardar Cambios y Sugerir Reglamentos</button>
+                </form>
+            </main>
+        
+        </body>
+    </html>`;
+}
 
 // Manejo de errores
 app.use((req, res) => {
@@ -978,6 +1214,7 @@ async function startServer() {
       console.log(`🏛️  Comisiones: http://localhost:${port}/comisiones`);
       console.log(`📊 Reportes: http://localhost:${port}/reportes`);
       console.log(`🎓 Facultades: http://localhost:${port}/facultades`);
+      console.log(`_._ Mi Espacio: http://localhost:${port}/mi_espacio`);
       
       console.log('\n=== PERMISOS DEL SISTEMA ===');
       console.log('👑 Administrativos: Acceso total (crear, editar, eliminar)');

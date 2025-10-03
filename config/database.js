@@ -309,6 +309,7 @@ process.on('SIGINT', async () => {
 
 // Exportar funciones y objetos
 module.exports = {
+  query: (text, params) => pool.query(text, params),
   pool,
   query,
   getClient,

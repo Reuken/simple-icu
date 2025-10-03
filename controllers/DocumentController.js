@@ -20,6 +20,8 @@ class DocumentController {
     try {
       const usuario = req.session.usuario;
       const permisos = usuario.permisos;
+      const comisionesResult = await query('SELECT id, nombre FROM comisiones ORDER BY nombre');
+      const comisiones = comisionesResult.rows;
       
       res.send(`
         <!DOCTYPE html>
@@ -29,857 +31,478 @@ class DocumentController {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Gestión de Documentos - ICU</title>
             <link rel="stylesheet" href="/estilos.css">
+
             <style>
-                .documents-container {
-                    max-width: 1200px;
-                    margin: 2rem auto;
-                    padding: 0 1rem;
-                }
-                .upload-section {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .documents-grid {
-                    display: grid;
-                    gap: 1rem;
-                }
-                .document-card {
-                    background: white;
-                    padding: 1.5rem;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    border-left: 4px solid #007BFF;
-                }
-                .document-meta {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 1rem;
-                }
-                .keywords-section {
-                    margin-top: 1rem;
-                    padding: 1rem;
-                    background: #f8f9fa;
-                    border-radius: 4px;
-                }
-                .keyword-tag {
-                    display: inline-block;
-                    padding: 0.25rem 0.5rem;
-                    margin: 0.25rem;
-                    background: #007BFF;
-                    color: white;
-                    border-radius: 12px;
-                    font-size: 0.8rem;
-                }
-                .recommendations {
-                    margin-top: 1rem;
-                    padding: 1rem;
-                    background: #e8f5e8;
-                    border-radius: 4px;
-                    border-left: 4px solid #28a745;
-                }
-                .upload-area {
-                    border: 2px dashed #007BFF;
-                    border-radius: 8px;
-                    padding: 2rem;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: background-color 0.3s ease;
-                }
-                .upload-area:hover {
-                    background-color: #f8f9fa;
-                }
-                .btn {
-                    padding: 0.5rem 1rem;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    text-decoration: none;
-                    display: inline-block;
-                    transition: background-color 0.3s ease;
-                }
-                .btn-primary {
-                    background-color: #007BFF;
-                    color: white;
-                }
-                .btn-success {
-                    background-color: #28a745;
-                    color: white;
-                }
-                .btn-info {
-                    background-color: #17a2b8;
-                    color: white;
-                }
-                .form-group {
-                    margin-bottom: 1rem;
-                }
-                .form-control {
-                    width: 100%;
-                    padding: 0.5rem;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                }
-                .hidden {
-                    display: none;
-                }
-                .loading {
-                    text-align: center;
-                    padding: 2rem;
-                }
-                .alert {
-                    padding: 1rem;
-                    margin-bottom: 1rem;
-                    border-radius: 4px;
-                }
-                .alert-success {
-                    background-color: #d4edda;
-                    border: 1px solid #c3e6cb;
-                    color: #155724;
-                }
-                .alert-error {
-                    background-color: #f8d7da;
-                    border: 1px solid #f5c6cb;
-                    color: #721c24;
-                }
-
-                /* NUEVOS ESTILOS PARA EL SISTEMA DE PROGRESO */
-                .progress-modal {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.7);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 1000;
-                }
-
-                .progress-content {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 12px;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-                    min-width: 400px;
-                    max-width: 500px;
-                    text-align: center;
-                }
-
-                .progress-bar-container {
-                    width: 100%;
-                    height: 20px;
-                    background-color: #e9ecef;
-                    border-radius: 10px;
-                    margin: 1rem 0;
-                    overflow: hidden;
-                    position: relative;
-                }
-
-                .progress-bar {
-                    height: 100%;
-                    background: linear-gradient(90deg, #007BFF, #28a745);
-                    border-radius: 10px;
-                    width: 0%;
-                    transition: width 0.5s ease;
-                    position: relative;
-                }
-
-                .progress-bar::after {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: linear-gradient(45deg, 
-                        transparent 35%, 
-                        rgba(255, 255, 255, 0.5) 50%, 
-                        transparent 65%
-                    );
-                    animation: shimmer 1.5s infinite;
-                }
-
-                @keyframes shimmer {
-                    0% { transform: translateX(-100%); }
-                    100% { transform: translateX(100%); }
-                }
-
-                .progress-text {
-                    font-size: 1.1rem;
-                    color: #333;
-                    margin-bottom: 0.5rem;
-                    font-weight: 500;
-                }
-
-                .progress-percentage {
-                    font-size: 1.5rem;
-                    font-weight: bold;
-                    color: #007BFF;
-                    margin: 0.5rem 0;
-                }
-
-                .progress-step {
-                    font-size: 0.9rem;
-                    color: #666;
-                    margin-top: 0.5rem;
-                    font-style: italic;
-                }
-
-                .success-modal {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.7);
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 1001;
-                }
-
-                .success-content {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 12px;
-                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-                    min-width: 350px;
-                    text-align: center;
-                    border-top: 5px solid #28a745;
-                }
-
-                .success-icon {
-                    font-size: 3rem;
-                    color: #28a745;
-                    margin-bottom: 1rem;
-                }
-
-                .spinner {
-                    border: 3px solid #f3f3f3;
-                    border-top: 3px solid #007BFF;
-                    border-radius: 50%;
-                    width: 30px;
-                    height: 30px;
-                    animation: spin 1s linear infinite;
-                    margin: 1rem auto;
-                }
-
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
+                /* Estilos específicos para la tabla y paginación */
+                .document-table-container { margin-top: 20px; overflow-x: auto; }
+                .document-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                .document-table th, .document-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                .document-table th { background-color: #f2f2f2; }
+                .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; }
+                .pagination-controls button { padding: 8px 15px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; }
+                .pagination-controls button:hover:not(:disabled) { background-color: #555; }
+                .pagination-controls button:disabled { background-color: #ccc; cursor: not-allowed; }
+                .search-filter-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
+                .search-filter-controls input, .search-filter-controls select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+                .action-buttons { display: flex; gap: 5px; }
+                .action-buttons button, .action-buttons a { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 0.9em;}
+                .view-button { background-color: #007bff; color: white; border: none; }
+                .download-button { background-color: #28a745; color: white; border: none; }
+                
+                /* Notificacion toast */
+                    .toast-notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        padding: 15px 25px;
+                        border-radius: 8px;
+                        color: white;
+                        font-weight: bold;
+                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                        z-index: 10001;
+                        opacity: 0;
+                        transform: translateY(-20px);
+                        transition: opacity 0.3s ease, transform 0.3s ease;
+                    }
+                    .toast-notification.show {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                    .toast-notification.success {
+                        background-color: #28a745; /* Verde */
+                    }
+                    .toast-notification.error {
+                        background-color: #dc3545; /* Rojo */
+                    }
             </style>
         </head>
         <body>
             <nav>
                 <a href="/dashboard" class="logo">ICU Dashboard</a>
                 <div class="nav-links">
-                    <a href="/dashboard">Dashboard</a>
+                    <a href="/dashboard">🖥️ Dashboard</a>
                     <a href="/documentos" class="active">📄 Documentos</a>
                     <span class="user-info-nav">👤 ${usuario.nombre}</span>
-                    <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                    <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
                 </div>
             </nav>
-
-            <div class="documents-container">
-                <div class="welcome-card">
-                    <h1>📄 Gestión de Documentos ICU</h1>
-                    <p>Sistema de documentos con análisis inteligente de contenido</p>
-                </div>
-
+            
+            <main>
+                <div class="split-container">
+                  <div class="form-column">
                 ${permisos.subir_documentos ? `
-                <div class="upload-section">
-                    <h3>📤 Subir Nuevo Documento</h3>
-                    <form id="uploadForm" enctype="multipart/form-data">
-                        <div class="form-group">
-                            <label for="titulo">Título del documento:</label>
-                            <input type="text" id="titulo" name="titulo" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="remitente">Remitente:</label>
-                            <input type="text" id="remitente" name="remitente" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label for="comision_id">Comisión:</label>
-                            <select id="comision_id" name="comision_id" class="form-control">
-                                <option value="">Seleccionar comisión...</option>
-                            </select>
-                        </div>
-                        <div class="upload-area" onclick="document.getElementById('archivo').click()">
-                            <p>🔄 Haz clic aquí para seleccionar un archivo PDF</p>
-                            <p><small>Máximo 10MB - Solo archivos PDF</small></p>
-                            <input type="file" id="archivo" name="archivo" accept=".pdf" class="hidden" onchange="updateFileName(this)">
-                        </div>
-                        <div id="fileName" style="margin: 1rem 0; font-style: italic;"></div>
-                        <button type="submit" class="btn btn-primary">📤 Subir Documento</button>
-                    </form>
-                </div>
-                ` : ''}
+                    <h2>Subir Nuevo Documento</h2>
+                    <form onsubmit="handleUploadSubmit(event)" enctype="multipart/form-data" class="form-container">
+                        <label for="titulo">Título del documento:</label>
+                        <input type="text" id="titulo" name="titulo" required>
 
-                <div id="alertContainer"></div>
-                
-                <div class="documents-section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3>📋 Documentos del Sistema</h3>
-                        <div>
-                            <input type="text" id="searchInput" placeholder="🔍 Buscar documentos..." class="form-control" style="width: 300px; display: inline-block;">
-                            <button onclick="loadDocumentsWithProgress()" class="btn btn-info">🔄 Actualizar</button>
+                        <label for="remitente">Remitente:</label>
+                        <input type="text" id="remitente" name="remitente" required>
+
+                        <label for="comision_id">Comisión:</label>
+                        <select id="comision_id" name="comision_id">
+                            <option value="">Seleccionar comisión...</option>
+                            ${comisiones.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('')}
+                        </select>
+
+                         <label for="categoria">Categoría:</label>
+                            <select id="categoria" name="categoria">
+                                <option value="Reglamento">Reglamento</option>
+                                <option value="Resolucion">Resolución</option>
+                                <option value="Informe de comision">Informe</option>
+                            </select>
+
+                        <div class="drop-area" id="drop-area">
+                            <input type="file" id="archivo" name="archivo" accept="application/pdf" hidden required>
+                            <p>Haz clic aquí para seleccionar un archivo PDF o arrástralo</p>
+                            <p>Máximo 25MB - Solo archivos PDF</p>
+                            <p id="file-name-display"></p>
                         </div>
+                        <button type="submit" class="cta-button">Subir Documento</button>
+                      </form>
+                    </div>      
+                <hr>
+                ` : ''}
+            <div class="list-column">
+                    <h2>Documentos del Sistema</h2>
+                    <div class="search-filter-controls">
+                        <input type="text" id="document-search" placeholder="Buscar documentos...">
+                        <select id="document-comision-filter">
+                            <option value="">Todas las comisiones</option>
+                            ${comisiones.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('')}
+                        </select>
+                        <button class="cta-button" onclick="loadDocuments()">Actualizar</button>
                     </div>
-                    
-                    <div id="documentsContainer">
-                        <div class="loading">Cargando documentos...</div>
+
+                    <div class="document-table-container">
+                        <table class="document-table">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Remitente</th>
+                                    <th>Comisión</th>
+                                    <th>Fecha</th>
+                                    <th>Subido por</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="document-list-body">
+                                </tbody>
+                        </table>
                     </div>
+
+                    <div class="pagination-controls">
+                        <button id="prevPage" disabled>Anterior</button>
+                        <span id="pageInfo">Página 1 de 1</span>
+                        <button id="nextPage" disabled>Siguiente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </main>
+
+            <div id="pdfModal" class="modal">
+                <div class="modal-content-pdf">
+                    <div class="modal-header">
+                        <h2 id="pdfModalTitle">Previsualización de Documento</h2>
+                        <span class="close-pdf-modal" onclick="closePdfModal()">&times;</span>
+                    </div>
+                    <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
                 </div>
             </div>
 
             <script>
-                // Cargar comisiones para el select
-                async function loadComisiones() {
+            let currentPage = 1;
+                let totalPages = 1;
+                const documentsPerPage = 15; // Ajusta según tu preferencia
+
+                document.addEventListener('DOMContentLoaded', () => {
+                    loadDocuments();
+                    setupDropArea();
+
+                    document.getElementById('document-search').addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            currentPage = 1; // Resetear a la primera página en cada nueva búsqueda
+                            loadDocuments();
+                        }
+                    });
+                    document.getElementById('document-comision-filter').addEventListener('change', () => {
+                        currentPage = 1; // Resetear a la primera página en cada cambio de filtro
+                        loadDocuments();
+                    });
+                    document.getElementById('prevPage').addEventListener('click', () => {
+                        if (currentPage > 1) {
+                            currentPage--;
+                            loadDocuments();
+                        }
+                    });
+                    document.getElementById('nextPage').addEventListener('click', () => {
+                        if (currentPage < totalPages) {
+                            currentPage++;
+                            loadDocuments();
+                        }
+                    });
+                });
+
+                async function loadDocuments() {
+                    const searchTerm = document.getElementById('document-search').value;
+                    const comisionFilter = document.getElementById('document-comision-filter').value;
+                    const queryString = new URLSearchParams({
+                        page: currentPage,
+                        limit: documentsPerPage,
+                        search: searchTerm,
+                        comision_id: comisionFilter
+                    }).toString();
+
+                    console.log('Actualizando lista de documentos con los parámetros:', queryString);
+
                     try {
-                        const response = await fetch('/api/comisiones');
-                        const comisiones = await response.json();
-                        const select = document.getElementById('comision_id');
+                        const response = await fetch('/api/documentos?' + queryString );
+                        const data = await response.json();
                         
-                        comisiones.forEach(comision => {
-                            const option = document.createElement('option');
-                            option.value = comision.id;
-                            option.textContent = comision.nombre;
-                            select.appendChild(option);
-                        });
+                        const documentListBody = document.getElementById('document-list-body');
+                        documentListBody.innerHTML = ''; // Limpiar la tabla
+
+                        if (data.documents && data.documents.length > 0) {
+                            data.documents.forEach(doc => {
+                                const row = documentListBody.insertRow();
+
+                                row.innerHTML = \`
+                                    <td>\${doc.titulo}</td>
+                                    <td>\${doc.remitente}</td>
+                                    <td>\${doc.comision_nombre || 'N/A'}</td>
+                                    <td>\${new Date(doc.fecha_subida).toLocaleDateString()}</td>
+                                    <td>\${doc.subido_por || 'Desconocido'}</td>
+                                    <td class="action-buttons">
+                                        <button class="view-button" onclick="viewPdf('\${doc.id}', '\${doc.titulo}')">Ver</button>
+                                        <a href="/api/documentos/\${doc.id}/download" class="download-button">Descargar</a>
+                                    </td>
+                                \`;
+                            });
+                        } else {
+                            documentListBody.innerHTML = \`<tr><td colspan="6">No se encontraron documentos.</td></tr>\`;
+                        }
+                        
+                        // Actualizar controles de paginación
+                        currentPage = data.currentPage;
+                        totalPages = data.totalPages;
+                        document.getElementById('pageInfo').textContent = \`Página \${currentPage} de \${totalPages}\`;
+                        document.getElementById('prevPage').disabled = currentPage === 1;
+                        document.getElementById('nextPage').disabled = currentPage === totalPages;
+
                     } catch (error) {
-                        console.error('Error cargando comisiones:', error);
+                        console.error('Error al cargar documentos:', error);
+                        document.getElementById('document-list-body').innerHTML = \`<tr><td colspan="6">Error al cargar documentos.</td></tr>\`;
                     }
                 }
 
-                // Actualizar nombre del archivo
-                function updateFileName(input) {
-                    const fileName = document.getElementById('fileName');
-                    if (input.files && input.files[0]) {
-                        fileName.textContent = '📄 Archivo seleccionado: ' + input.files[0].name;
-                    } else {
-                        fileName.textContent = '';
+                // --- Funcionalidad de Drag & Drop y Previsualización ---
+
+                function setupDropArea() {
+                    const dropArea = document.getElementById('drop-area');
+                    const fileInput = document.getElementById('archivo');
+                    const fileNameDisplay = document.getElementById('file-name-display');
+
+                    ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                        dropArea.addEventListener(eventName, preventDefaults, false);
+                    });
+
+                    function preventDefaults(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
                     }
-                }
 
-                // FUNCIONES DEL SISTEMA DE PROGRESO
+                    ;['dragenter', 'dragover'].forEach(eventName => {
+                        dropArea.addEventListener(eventName, highlight, false);
+                    });
 
-                // Función para mostrar el modal de progreso
-                function showProgressModal() {
-                    const modal = document.createElement('div');
-                    modal.id = 'progressModal';
-                    modal.className = 'progress-modal';
-                    modal.innerHTML = '<div class="progress-content">' +
-                              '<h3>📤 Subiendo Documento</h3>' +
-                              '<div class="progress-bar-container">' +
-                                  '<div class="progress-bar" id="progressBar"></div>' +
-                              '</div>' +
-                              '<div class="progress-percentage" id="progressPercentage">0%</div>' +
-                              '<div class="progress-text" id="progressText">Iniciando subida...</div>' +
-                              '<div class="progress-step" id="progressStep">Preparando archivo...</div>' +
-                              '<div class="spinner" id="progressSpinner"></div>' +
-                          '</div>';
-                      ;
-                    document.body.appendChild(modal);
-                    return modal;
-                }
+                    ;['dragleave', 'drop'].forEach(eventName => {
+                        dropArea.addEventListener(eventName, unhighlight, false);
+                    });
 
-                // Función para actualizar el progreso
-                function updateProgress(percentage, text, step) {
-                    const progressBar = document.getElementById('progressBar');
-                    const progressPercentage = document.getElementById('progressPercentage');
-                    const progressText = document.getElementById('progressText');
-                    const progressStep = document.getElementById('progressStep');
-                    
-                    if (progressBar) progressBar.style.width = percentage + '%';
-                    if (progressPercentage) progressPercentage.textContent = Math.round(percentage) + '%';
-                    if (progressText) progressText.textContent = text;
-                    if (progressStep) progressStep.textContent = step;
-                }
-
-                // Función para mostrar modal de éxito
-                function showSuccessModal(documento, palabrasClave, recomendaciones) {
-                      // Remover modal de progreso con animación
-                      const progressModal = document.getElementById('progressModal');
-                            if (progressModal) {
-                                progressModal.style.transition = 'opacity 0.3s ease';
-                                progressModal.style.opacity = '0';
-                                setTimeout(function() {
-                                    progressModal.remove();
-                                }, 300);
-                            }
-
-                      // Mostrar modal de éxito después de un pequeño delay
-                      setTimeout(() => {
-                          const modal = document.createElement('div');
-                          modal.id = 'successModal';
-                          modal.className = 'success-modal';
-                          modal.style.opacity = '0';
-                          modal.innerHTML =
-                              '<div class="success-icon">✅</div>' +
-                              '<h3>¡Documento Procesado Exitosamente!</h3>' +
-                              '<div style="margin: 1rem 0; padding: 1rem; background: #f8f9fa; border-radius: 6px;">' +
-                                  '<p><strong>📄 Título:</strong> ' + documento.titulo + '</p>' +
-                                  '<p><strong>🏷️ Palabras clave:</strong> ' + palabrasClave.length + ' identificadas</p>' +
-                                  '<p><strong>🔗 Documentos similares:</strong> ' + recomendaciones.length + ' encontrados</p>' +
-                                  '<p><strong>📊 Estado:</strong> <span style="color: #28a745; font-weight: bold;">Análisis completado</span></p>' +
-                              '</div>' +
-                              '<div style="margin-top: 1.5rem;">' +
-                                  '<button onclick="closeSuccessModal()" class="btn btn-success">' +
-                                      '✨ ¡Perfecto!' +
-                                  '</button>' +
-                              '</div>' +
-                              '<p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">' +
-                                  'El documento aparecerá en la lista actualizada en unos momentos' +
-                              '</p>' +
-                          '</div>';
-                          ;
-                          document.body.appendChild(modal);
-                          
-                          // Animación de entrada
-                          setTimeout(() => {
-                              modal.style.transition = 'opacity 0.4s ease';
-                              modal.style.opacity = '1';
-                          }, 50);
-
-                          // Auto-cerrar después de 6 segundos
-                          setTimeout(() => {
-                              closeSuccessModal();
-                          }, 6000);
-                      }, 400);
-                  }
-
-                // Función para cerrar modal de éxito
-                function closeSuccessModal() {
-                    const modal = document.getElementById('successModal');
-                    if (modal) {
-                        modal.remove();
+                    function highlight() {
+                        dropArea.classList.add('highlight');
                     }
-                    // Actualizar lista de documentos
-                    loadDocumentsWithProgress();
-                }
 
-                // Función para cerrar modal de progreso (en caso de error)
-                function closeProgressModal() {
-                    const modal = document.getElementById('progressModal');
-                    if (modal) {
-                        modal.remove();
+                    function unhighlight() {
+                        dropArea.classList.remove('highlight');
                     }
-                }
 
-                // Función simulada para simular progreso realista
-                function simulateProgress(actualProgress, targetProgress, duration, callback) {
-                    const startTime = Date.now();
-                    const startProgress = actualProgress;
-                    const progressDiff = targetProgress - startProgress;
-                    
-                    function update() {
-                        const elapsed = Date.now() - startTime;
-                        const progress = Math.min(elapsed / duration, 1);
-                        const currentProgress = startProgress + (progressDiff * progress);
-                        
-                        callback(currentProgress);
-                        
-                        if (progress < 1) {
-                            requestAnimationFrame(update);
+                    dropArea.addEventListener('drop', handleDrop, false);
+                    fileInput.addEventListener('change', handleFilesSelect, false);
+                    dropArea.addEventListener('click', () => fileInput.click(), false);
+
+
+                    function handleFilesSelect(e) {
+                        const dt = e.dataTransfer || e.target;
+                        const files = dt.files;
+                        if (files.length > 0) {
+                            fileInput.files = files; // Asigna el archivo seleccionado al input real
+                            fileNameDisplay.textContent = \`Archivo seleccionado: \${files[0].name}\`;
+                        } else {
+                            fileNameDisplay.textContent = '';
                         }
                     }
-                    
-                    update();
-                }
 
-                // EVENTO DEL FORMULARIO MEJORADO CON PROGRESO
-                document.getElementById('uploadForm')?.addEventListener('submit', async function(e) {
-                  e.preventDefault();
-                  
-                  const formData = new FormData(this);
-                  const submitBtn = this.querySelector('button[type="submit"]');
-                  
-                  // Validar que se seleccionó un archivo
-                  if (!formData.get('archivo') || formData.get('archivo').size === 0) {
-                      showAlert('⚠️ Por favor selecciona un archivo PDF', 'error');
-                      return;
-                  }
-                  
-                  // Deshabilitar botón
-                  submitBtn.disabled = true;
-                  submitBtn.textContent = '📤 Procesando...';
-                  
-                  // Mostrar modal de progreso
-                  showProgressModal();
-                  
-                  try {
-                      
-
-                      // Fase 1: Validación inicial (0-15%)
-                      updateProgress(5, 'Validando archivo...', 'Verificando formato PDF');
-                      await new Promise(resolve => setTimeout(resolve, 500));
-                      
-                      updateProgress(10, 'Preparando subida...', 'Validando datos del formulario');
-                      await new Promise(resolve => setTimeout(resolve, 300));
-                      
-                      updateProgress(15, 'Iniciando transferencia...', 'Conectando con el servidor');
-                      await new Promise(resolve => setTimeout(resolve, 400));
-                      
-
-                 // Crear la petición con seguimiento del progreso de subida
-                      const xhr = new XMLHttpRequest();
-                      
-                      // Promesa para manejar la respuesta
-                      const uploadPromise = new Promise((resolve, reject) => {
-                          xhr.onload = function() {
-                              if (xhr.status >= 200 && xhr.status < 300) {
-                                  try {
-                                      const response = JSON.parse(xhr.responseText);
-                                      resolve(response);
-                                  } catch (e) {
-                                      reject(new Error('Respuesta del servidor inválida'));
-                                  }
-                              } else {
-                                  try {
-                                      const errorResponse = JSON.parse(xhr.responseText);
-                                      reject(new Error(errorResponse.error || errorResponse.details || 'Error del servidor'));
-                                  } catch (e) {
-                                      reject(new Error('Error HTTP \${xhr.status}: \${xhr.statusText}'));
-                                  }
-                              }
-                          };
-                          
-                          xhr.onerror = () => reject(new Error('Error de conexión con el servidor'));
-                          xhr.ontimeout = () => reject(new Error('Tiempo de espera agotado'));
-                          
-                          // Monitorear progreso de subida
-                          xhr.upload.onprogress = function(e) {
-                              if (e.lengthComputable) {
-                                  const uploadPercent = (e.loaded / e.total) * 100;
-                                  const progressValue = 15 + (uploadPercent * 0.15); // 15% a 30%
-                                  updateProgress(progressValue, 'Subiendo archivo...', '\${Math.round(uploadPercent)}% transferido');
-                              }
-                          };
-                      });
-
-                      // Fase 2: Subida del archivo (15-25%)
-                      updateProgress(20, 'Subiendo archivo...', 'Transfiriendo datos al servidor');
-                      
-                      
-                      // Configurar y enviar petición
-                      xhr.open('POST', '/api/documentos');
-                      xhr.timeout = 30000; // 30 segundos timeout
-                      xhr.send(formData);
-                      
-                      // Simular progreso mientras se procesa (30-85%)
-                      setTimeout(() => {
-                          updateProgress(35, 'Archivo recibido...', 'Extrayendo contenido del PDF');
-                      }, 1000);
-                      
-                      setTimeout(() => {
-                          updateProgress(45, 'Procesando contenido...', 'Analizando estructura del documento');
-                      }, 2500);
-                      
-                      setTimeout(() => {
-                          updateProgress(55, 'Extrayendo texto...', 'Convirtiendo PDF a texto plano');
-                      }, 3200);
-                      
-                      setTimeout(() => {
-                          updateProgress(65, 'Iniciando análisis NLP...', 'Configurando procesamiento de lenguaje');
-                      }, 3000);
-                      
-                      setTimeout(() => {
-                          updateProgress(72, 'Analizando contenido...', 'Procesamiento de lenguaje natural en curso');
-                      }, 5800);
-                      
-                      setTimeout(() => {
-                          updateProgress(80, 'Extrayendo palabras clave...', 'Identificando términos relevantes');
-                      }, 5500);
-                      
-                      setTimeout(() => {
-                          updateProgress(85, 'Buscando documentos similares...', 'Comparando con documentos existentes');
-                      }, 5200);
-                      
-                      // Esperar la respuesta del servidor
-                      const result = await uploadPromise;
-                      
-                      // Completar el progreso solo cuando el servidor responda exitosamente
-                      updateProgress(92, 'Guardando análisis...', 'Almacenando resultados en base de datos');
-                      await new Promise(resolve => setTimeout(resolve, 500));
-                      
-                      updateProgress(96, 'Finalizando proceso...', 'Preparando respuesta');
-                      await new Promise(resolve => setTimeout(resolve, 300));
-                      
-                      updateProgress(100, 'Proceso completado', '¡Documento procesado exitosamente!');
-                      await new Promise(resolve => setTimeout(resolve, 400));
-                      
-                      // Mostrar modal de éxito
-                      showSuccessModal(result.documento, result.palabras_clave, result.recomendaciones);
-                      
-                      // Limpiar formulario
-                      this.reset();
-                      document.getElementById('fileName').textContent = '';
-                      
-                      console.log('✅ Documento subido exitosamente:', result.documento.titulo);
-                      
-                  } catch (error) {
-                      console.log('🕵️‍♂️ DETALLE COMPLETO DEL ERROR:', error);
-                      console.error('✅ Documento subido exitosamente:', error);
-                      
-                      // Cerrar modal de progreso y mostrar error detallado
-                      closeProgressModal();
-                      
-                      // Mostrar error más específico
-                      let errorMessage = 'Error desconocido';
-                      if (error.message) {
-                          errorMessage = error.message;
-                      } else if (error.details) {
-                          errorMessage = error.details;
-                      } else if (error.error) {
-                          errorMessage = error.error;
-                      }
-                      
-                      showAlert('✅ Documento subido exitosamente', 'success');
-                      
-                  } finally {
-                      submitBtn.disabled = false;
-                      submitBtn.textContent = '📤 Subir Documento';
-                  }
-              });
-
-              // TAMBIÉN AGREGAR esta función mejorada para cerrar modal con animación:
-
-              function closeProgressModal() {
-                  const modal = document.getElementById('progressModal');
-                  if (modal) {
-                      // Animación de salida suave
-                      modal.style.transition = 'opacity 0.3s ease';
-                      modal.style.opacity = '0';
-                      setTimeout(() => {
-                          modal.remove();
-                      }, 300);
-                  }
-              }
-
-                // Función mejorada para cargar documentos con progreso
-                async function loadDocumentsWithProgress() {
-                    const container = document.getElementById('documentsContainer');
-                    
-                    // Mostrar indicador de carga elegante
-                    container.innerHTML = \`
-                        <div class="loading" style="padding: 3rem; text-align: center;">
-                            <div class="spinner"></div>
-                            <h3 style="color: #007BFF; margin-top: 1rem;">Cargando documentos...</h3>
-                            <p style="color: #666;">Obteniendo la lista actualizada</p>
-                        </div>
-                    \`;
-                    
-                    try {
-                        console.log('Cargando documentos...');
-                        const response = await fetch('/api/documentos');
-                        
-                        console.log('Response status:', response.status);
-                        console.log('Response headers:', response.headers.get('content-type'));
-                        
-                        if (!response.ok) {
-                            throw new Error(\`HTTP \${response.status}: \${response.statusText}\`);
-                        }
-                        
-                        const contentType = response.headers.get('content-type');
-                        if (!contentType || !contentType.includes('application/json')) {
-                            const text = await response.text();
-                            console.error('Respuesta no JSON:', text.substring(0, 200));
-                            throw new Error('La respuesta del servidor no es JSON válido');
-                        }
-                        
-                        const documentos = await response.json();
-                        console.log('Documentos recibidos:', documentos);
-                        
-                        if (!Array.isArray(documentos)) {
-                            console.error('Respuesta no es array:', typeof documentos, documentos);
-                            throw new Error('La respuesta no es un array válido');
-                        }
-                        
-                        // Simular un pequeño delay para UX suave
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        
-                        if (documentos.length === 0) {
-                            container.innerHTML = \`
-                                <div class="no-data" style="text-align: center; padding: 3rem;">
-                                    <div style="font-size: 4rem; margin-bottom: 1rem;">📄</div>
-                                    <h3>No hay documentos disponibles</h3>
-                                    <p>Los documentos aparecerán aquí una vez que sean subidos.</p>
-                                    \${${permisos.subir_documentos} ? '<p><small>Usa el formulario de arriba para subir tu primer documento.</small></p>' : ''}
-                                </div>
-                            \`;
-                            return;
-                        }
-                        
-                        container.innerHTML = documentos.map(doc => generateDocumentCard(doc)).join('');
-                        console.log('Documentos renderizados exitosamente');
-                        
-                        // Animación de entrada para las tarjetas
-                        const cards = container.querySelectorAll('.document-card');
-                        cards.forEach((card, index) => {
-                            card.style.opacity = '0';
-                            card.style.transform = 'translateY(20px)';
-                            setTimeout(() => {
-                                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                                card.style.opacity = '1';
-                                card.style.transform = 'translateY(0)';
-                            }, index * 100);
-                        });
-                        
-                    } catch (error) {
-                        console.error('Error cargando documentos:', error);
-                        container.innerHTML = \`
-                            <div class="alert alert-error">
-                                <h4>❌ Error cargando documentos</h4>
-                                <p><strong>Detalle:</strong> \${error.message}</p>
-                                <button onclick="loadDocumentsWithProgress()" class="btn btn-primary" style="margin-top: 1rem;">
-                                    🔄 Reintentar
-                                </button>
-                            </div>
-                        \`;
+                    function handleDrop(e) {
+                        const dt = e.dataTransfer;
+                        const files = dt.files;
+                        handleFilesSelect({ dataTransfer: dt, target: fileInput });
                     }
                 }
+                
+                function viewPdf(documentId, documentTitle) {
+                    const pdfModal = document.getElementById('pdfModal');
+                    const pdfViewer = document.getElementById('pdfViewer');
+                    const pdfModalTitle = document.getElementById('pdfModalTitle');
 
-              // Generar tarjeta de documento con manejo seguro de JSON
-              function generateDocumentCard(doc) {
-                  try {
-                      const fecha = new Date(doc.fecha_ingreso).toLocaleDateString('es-ES');
-                      
-                      // Manejo seguro de campos JSON
-                      let keywords = [];
-                      let recomendaciones = [];
-                      
-                      try {
-                          if (doc.palabras_clave) {
-                              keywords = typeof doc.palabras_clave === 'string' 
-                                  ? JSON.parse(doc.palabras_clave) 
-                                  : doc.palabras_clave;
-                          }
-                      } catch (e) {
-                          console.warn('Error parseando palabras_clave para doc', doc.id, ':', e);
-                      }
-                      
-                      try {
-                          if (doc.recomendaciones) {
-                              recomendaciones = typeof doc.recomendaciones === 'string' 
-                                  ? JSON.parse(doc.recomendaciones) 
-                                  : doc.recomendaciones;
-                          }
-                      } catch (e) {
-                          console.warn('Error parseando recomendaciones para doc', doc.id, ':', e);
-                      }
-                      
-                      return \`
-                          <div class="document-card">
-                              <div class="document-meta">
-                                  <div>
-                                      <h4>\${doc.titulo}</h4>
-                                      <p><strong>Remitente:</strong> \${doc.remitente || 'No especificado'}</p>
-                                      <p><strong>Fecha:</strong> \${fecha}</p>
-                                      <p><strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}</p>
-                                      <p><strong>Subido por:</strong> \${doc.nombre_usuario || 'Usuario desconocido'}</p>
-                                  </div>
-                                  <div>
-                                      \${doc.archivo_path ? \`
-                                      <a href="/api/documentos/\${doc.id}/download" class="btn btn-info" target="_blank">
-                                          📥 Descargar
-                                      </a>
-                                      \` : \`
-                                      <span class="btn" style="background: #ccc; color: #666;">📄 Sin archivo</span>
-                                      \`}
-                                  </div>
-                              </div>
-                              
-                              \${Array.isArray(keywords) && keywords.length > 0 ? \`
-                              <div class="keywords-section">
-                                  <h5>🏷️ Palabras Clave Identificadas:</h5>
-                                  \${keywords.map(keyword => \`<span class="keyword-tag">\${keyword}</span>\`).join('')}
-                              </div>
-                              \` : ''}
-                              
-                              \${Array.isArray(recomendaciones) && recomendaciones.length > 0 ? \`
-                              <div class="recommendations">
-                                  <h5>💡 Documentos Relacionados:</h5>
-                                  <ul>
-                                      \${recomendaciones.map(rec => \`
-                                          <li>
-                                              <a href="/api/documentos/\${rec.id}/download" target="_blank">
-                                                  \${rec.titulo}
-                                              </a> 
-                                              (Similaridad: \${Math.round(rec.similarity * 100)}%)
-                                          </li>
-                                      \`).join('')}
-                                  </ul>
-                              </div>
-                              \` : ''}
-                              
-                              \${!doc.contenido_texto ? \`
-                              <div style="margin-top: 1rem; padding: 0.5rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; color: #856404;">
-                                  ⚠️ Este documento no ha sido procesado con análisis NLP
-                              </div>
-                              \` : ''}
-                          </div>
-                      \`;
-                  } catch (error) {
-                      console.error('Error generando card para documento', doc?.id, ':', error);
-                      return \`
-                          <div class="document-card" style="border-left-color: #dc3545;">
-                              <p>❌ Error mostrando documento: \${doc?.titulo || 'Sin título'}</p>
-                              <small>ID: \${doc?.id}</small>
-                          </div>
-                      \`;
-                  }
-              }
+                    pdfModalTitle.textContent = documentTitle;
+                    pdfViewer.src = \`/api/documentos/\${documentId}/preview\`; // La misma ruta de descarga funciona para previsualizar
+                    pdfModal.style.display = 'block';
+                }
 
-              // Mostrar alertas
-              function showAlert(message, type) {
-                  const container = document.getElementById('alertContainer');
-                  const alert = document.createElement('div');
-                  alert.className = \`alert alert-\${type}\`;
-                  alert.innerHTML = message;
-                  
-                  container.appendChild(alert);
-                  
-                  // Auto-remover después de 5 segundos
+                function closePdfModal() {
+                    const pdfModal = document.getElementById('pdfModal');
+                    const pdfViewer = document.getElementById('pdfViewer');
+                    pdfModal.style.display = 'none';
+                    pdfViewer.src = ''; // Limpiar el iframe al cerrar
+                }
+                window.onclick = function(event) {
+                    const pdfModal = document.getElementById('pdfModal');
+                    if (event.target == pdfModal) {
+                        closePdfModal();
+                    }
+                }
+           
+                          /**
+               * Muestra una notificación temporal (toast) en la esquina de la pantalla.
+               */
+              function showAlert(message, type = 'success') {
+                  const notification = document.createElement('div');
+                  notification.className = \`toast-notification \${type}\`;
+                  notification.textContent = message;
+                  document.body.appendChild(notification);
+
+                  // Muestra la notificación
                   setTimeout(() => {
-                      if (alert.parentNode) {
-                          alert.remove();
-                      }
-                  }, 5000);
+                      notification.classList.add('show');
+                  }, 10);
+
+                  // Oculta y elimina la notificación después de 3 segundos
+                  setTimeout(() => {
+                      notification.classList.remove('show');
+                      setTimeout(() => {
+                          document.body.removeChild(notification);
+                      }, 300);
+                  }, 3000);
               }
 
-              // Búsqueda en tiempo real
-              document.getElementById('searchInput').addEventListener('input', function(e) {
-                  const searchTerm = e.target.value.toLowerCase();
-                  const cards = document.querySelectorAll('.document-card');
-                  
-                  cards.forEach(card => {
-                      const text = card.textContent.toLowerCase();
-                      if (text.includes(searchTerm)) {
-                          card.style.display = 'block';
-                      } else {
-                          card.style.display = 'none';
-                      }
-                  });
-              });
 
-              // Inicializar página
-              document.addEventListener('DOMContentLoaded', function() {
-                  console.log('DOM cargado, inicializando...');
-                  
-                  // Solo cargar comisiones si el usuario puede subir documentos
-                  ${permisos.subir_documentos ? 'loadComisiones();' : ''}
-                  
-                  // Cargar documentos con el nuevo sistema de progreso
-                  loadDocumentsWithProgress();
-                  
-                  console.log('Inicialización completada');
-              });
-          </script>
+              // UploadSubmit
+
+                  async function handleUploadSubmit(event) {
+                      console.log('🚀 Iniciando subida de documento...');
+                      event.preventDefault();
+                      
+                      const form = event.target;
+                      const submitButton = form.querySelector('button[type="submit"]');
+                      const originalButtonText = submitButton.textContent;
+                      
+                      // Validaciones del frontend
+                      const formData = new FormData(form);
+                      const titulo = formData.get('titulo')?.trim();
+                      const archivo = formData.get('archivo');
+                      
+                      if (!titulo) {
+                          showAlert('El título es obligatorio', 'error');
+                          return;
+                      }
+                      
+                      if (!archivo || archivo.size === 0) {
+                          showAlert('Debe seleccionar un archivo', 'error');
+                          return;
+                      }
+                      
+                      // Deshabilitar botón
+                      submitButton.disabled = true;
+                      submitButton.textContent = 'Subiendo...';
+                      
+                      // Timeout para evitar que se quede colgado
+                      const controller = new AbortController();
+                      const timeoutId = setTimeout(() => {
+                          controller.abort();
+                          console.error('❌ Timeout: La subida tardó más de 2 minutos');
+                      }, 120000); // 2 minutos
+                      
+                      try {
+                          console.log('📤 Enviando archivo:', {
+                              nombre: archivo.name,
+                              tamaño: \`\${(archivo.size / 1024 / 1024).toFixed(2)} MB\`,
+                              tipo: archivo.type,
+                              titulo: titulo
+                          });
+                          
+                          const response = await fetch('/api/documentos', {
+                              method: 'POST',
+                              body: formData,
+                              signal: controller.signal
+                          });
+                          
+                          clearTimeout(timeoutId);
+                          
+                          console.log('📥 Respuesta recibida:', {
+                              status: response.status,
+                              statusText: response.statusText,
+                              contentType: response.headers.get('content-type')
+                          });
+                          
+                          // Leer respuesta como texto primero
+                          const responseText = await response.text();
+                          console.log('📄 Contenido de respuesta:', responseText || '(vacío)');
+                          
+                          if (!response.ok) {
+                              // Manejar errores HTTP
+                              let errorMessage = \`Error del servidor (\${response.status})\`;
+                              
+                              if (responseText) {
+                                  try {
+                                      const errorData = JSON.parse(responseText);
+                                      errorMessage = errorData.error || errorData.details || errorMessage;
+                                  } catch (parseError) {
+                                      errorMessage = responseText;
+                                  }
+                              }
+                              
+                              throw new Error(errorMessage);
+                          }
+                          
+                          // Procesar respuesta exitosa
+                          if (!responseText) {
+                              throw new Error('El servidor no devolvió ningún dato');
+                          }
+                          
+                          let result;
+                          try {
+                              result = JSON.parse(responseText);
+                          } catch (parseError) {
+                              console.error('❌ Error parseando JSON:', parseError);
+                              throw new Error('Respuesta del servidor inválida');
+                          }
+                          
+                          if (!result.success) {
+                              throw new Error(result.error || result.details || 'Error desconocido del servidor');
+                          }
+                          
+                          // Éxito
+                          console.log('✅ Documento subido exitosamente:', result);
+                          
+                          const mensaje = result.message || 'Documento subido con éxito';
+                          const procesamiento = result.procesamiento || {};
+                          
+                          let detalles = '';
+                          if (procesamiento.ocr_aplicado) {
+                              detalles += ' (OCR aplicado)';
+                          }
+                          if (procesamiento.palabras_clave_count > 0) {
+                              detalles += \` - \${procesamiento.palabras_clave_count} palabras clave\`;
+                          }
+                          
+                          showAlert(mensaje + detalles, 'success');
+                          
+                          // Limpiar formulario
+                          form.reset();
+                          const fileDisplay = document.getElementById('file-name-display');
+                          if (fileDisplay) {
+                              fileDisplay.textContent = '';
+                          }
+                          
+                          // Recargar lista de documentos
+                          if (typeof loadDocuments === 'function') {
+                              await loadDocuments();
+                              console.log('📋 Lista de documentos actualizada');
+                          } else {
+                              console.warn('⚠️ Función loadDocuments no disponible');
+                          }
+                          
+                      } catch (error) {
+                          clearTimeout(timeoutId);
+                          
+                          if (error.name === 'AbortError') {
+                              console.error('❌ Subida cancelada por timeout');
+                              showAlert('La subida tardó demasiado tiempo. Por favor, intente con un archivo más pequeño.', 'error');
+                          } else {
+                              console.error('❌ Error durante la subida:', error);
+                              showAlert(\`Error: \${error.message}\`, 'error');
+                          }
+                          
+                      } finally {
+                          // Siempre reactivar botón
+                          submitButton.disabled = false;
+                          submitButton.textContent = originalButtonText;
+                          console.log('🔄 Botón reactivado');
+                      }
+                  }
+            </script>
       </body>
       </html>
     `);
@@ -892,16 +515,51 @@ class DocumentController {
   // Obtener lista de documentos
 static async getDocumentos(req, res) {
   try {
-    const result = await query(`
-      SELECT 
-        d.*,
-        c.nombre as nombre_comision, 
-        u.nombre as nombre_usuario
-      FROM documentos d
-      LEFT JOIN comisiones c ON d.comision_id = c.id
-      LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
-      ORDER BY d.created_at DESC
-    `);
+      const { page = 1, limit = 15, search = '', comision_id = '' } = req.query; // Añadimos comision_id como filtro
+      const offset = (parseInt(page) - 1) * parseInt(limit);
+      
+      let queryText = `
+        SELECT
+          d.id,
+          d.titulo,
+          d.remitente,
+          c.nombre AS comision_nombre,
+          d.fecha_ingreso AS fecha_subida,
+          u.nombre AS subido_por,
+          d.archivo_path
+        FROM documentos d
+        LEFT JOIN comisiones c ON d.comision_id = c.id
+        LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
+        WHERE 1 = 1
+      `;
+      let countQuery = `SELECT COUNT(*) FROM documentos d LEFT JOIN comisiones c ON d.comision_id = c.id LEFT JOIN usuarios u ON d.usuario_creador_id = u.id WHERE 1 = 1`;
+      const queryParams = [];
+      let paramIndex = 1;
+
+      if (search) {
+        const searchClause = ` AND (d.titulo ILIKE $${paramIndex} OR d.remitente ILIKE $${paramIndex} OR c.nombre ILIKE $${paramIndex} OR u.nombre ILIKE $${paramIndex})`;
+        queryText += searchClause; // 👇 CAMBIO
+        countQuery += searchClause;
+        queryParams.push(`%${search}%`);
+        paramIndex++;
+      }
+
+      if (comision_id) { // Filtro por comisión
+        const comisionClause = ` AND d.comision_id = $${paramIndex}`;
+        queryText += comisionClause; // 👇 CAMBIO
+        countQuery += comisionClause;
+        queryParams.push(comision_id);
+        paramIndex++;
+      }
+      
+      const totalDocumentsResult = await query(countQuery, queryParams);
+      const totalDocuments = parseInt(totalDocumentsResult.rows[0].count);
+      const totalPages = Math.ceil(totalDocuments / parseInt(limit));
+
+      queryText += ` ORDER BY d.fecha_ingreso DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1} `;
+      queryParams.push(parseInt(limit), offset);
+    
+      const result = await query(queryText, queryParams);
 
     // Procesar resultados para manejar campos JSON nulos
     const documentosProcessed = result.rows.map(doc => ({
@@ -912,7 +570,12 @@ static async getDocumentos(req, res) {
       metadatos_procesamiento: doc.metadatos_procesamiento || '{}'
     }));
 
-    res.json(documentosProcessed);
+    res.json({
+        documents: result.rows,
+        currentPage: parseInt(page),
+        perPage: parseInt(limit),
+        totalDocuments,
+        totalPages},documentosProcessed);
   } catch (error) {
     console.error('Error obteniendo documentos:', error);
     res.status(500).json({ error: 'Error obteniendo documentos' });
@@ -1224,59 +887,95 @@ static async getDocumentos(req, res) {
   // Subir documento con análisis NLP y OCR
   static async uploadDocumento(req, res) {
     const client = await getClient();
+    let archivoPath = null;
     
     try {
       await client.query('BEGIN');
 
       const { titulo, remitente, comision_id } = req.body;
       const archivo = req.file;
+      archivoPath = archivo?.path;
 
+      // Validaciones básicas
       if (!archivo) {
-        throw new Error('No se ha subido ningún archivo');
+        return res.status(400).json({ 
+          success: false,
+          error: 'No se ha subido ningún archivo',
+          details: 'Archivo requerido'
+        });
       }
 
-      if (!titulo) {
-        throw new Error('El título es obligatorio');
+      if (!titulo || titulo.trim().length === 0) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'El título es obligatorio',
+          details: 'Título requerido'
+        });
+      }
+
+      if (!req.session?.usuario?.id) {
+        return res.status(401).json({ 
+          success: false,
+          error: 'Usuario no autenticado',
+          details: 'Sesión requerida'
+        });
       }
 
       console.log(`📤 Procesando documento: ${titulo} (${archivo.mimetype})`);
 
-      // Procesar archivo con OCR si es necesario
-      const resultadoProcesamiento = await DocumentController.procesarArchivoConOCR(
-        archivo.path, 
-        archivo.mimetype
-      );
+      // Variables con valores por defecto
+      let contenidoTexto = '';
+      let ocrAplicado = false;
+      let metadatosProcesamiento = {};
+      let palabrasClave = [];
+      let analisisNLP = {
+        longitud_caracteres: 0,
+        longitud_palabras: 0,
+        longitud_oraciones: 0,
+        sentiment: 0,
+        complejidad: { score: 0 },
+        temas_detectados: [],
+        procesamiento_limitado: true
+      };
 
-      const contenidoTexto = resultadoProcesamiento.texto;
-      const ocrAplicado = resultadoProcesamiento.ocr_aplicado;
-      const metadatosProcesamiento = resultadoProcesamiento.metadatos;
+      try {
+        // Procesar archivo con OCR si es necesario
+        console.log('🔍 Iniciando procesamiento OCR...');
+        const resultadoProcesamiento = await DocumentController.procesarArchivoConOCR(
+          archivo.path, 
+          archivo.mimetype
+        );
 
-      console.log(`📝 Texto extraído: ${contenidoTexto.length} caracteres`);
+        contenidoTexto = resultadoProcesamiento.texto || '';
+        ocrAplicado = resultadoProcesamiento.ocr_aplicado || false;
+        metadatosProcesamiento = resultadoProcesamiento.metadatos || {};
+
+        console.log(`📝 Texto extraído: ${contenidoTexto.length} caracteres`);
+
+      } catch (ocrError) {
+        console.error('⚠️ Error en OCR, continuando sin procesamiento:', ocrError.message);
+        // Continuamos sin OCR
+        metadatosProcesamiento.ocr_error = ocrError.message;
+      }
 
       // Análisis NLP solo si hay contenido de texto suficiente
-      let palabrasClave = [];
-      let analisisNLP = {};
-      
       if (contenidoTexto && contenidoTexto.trim().length > 50) {
-        console.log('🧠 Aplicando análisis NLP...');
-        palabrasClave = await DocumentController.extractKeywords(contenidoTexto);
-        analisisNLP = await DocumentController.analyzeDocument(contenidoTexto);
-        
-        console.log(`🏷️ Palabras clave extraídas: ${palabrasClave.length}`);
+        try {
+          console.log('🧠 Aplicando análisis NLP...');
+          palabrasClave = await DocumentController.extractKeywords(contenidoTexto);
+          analisisNLP = await DocumentController.analyzeDocument(contenidoTexto);
+          
+          console.log(`🏷️ Palabras clave extraídas: ${palabrasClave.length}`);
+        } catch (nlpError) {
+          console.error('⚠️ Error en análisis NLP, continuando con valores por defecto:', nlpError.message);
+          analisisNLP.nlp_error = nlpError.message;
+        }
       } else {
         console.warn('⚠️ Texto insuficiente para análisis NLP');
-        analisisNLP = {
-          longitud_caracteres: contenidoTexto.length,
-          longitud_palabras: 0,
-          longitud_oraciones: 0,
-          sentiment: 0,
-          complejidad: { score: 0 },
-          temas_detectados: [],
-          procesamiento_limitado: true
-        };
       }
 
       // Insertar documento en la base de datos
+      console.log('💾 Guardando en base de datos...');
       const documentResult = await client.query(`
         INSERT INTO documentos (
           titulo, remitente, fecha_ingreso, comision_id, usuario_creador_id,
@@ -1284,7 +983,7 @@ static async getDocumentos(req, res) {
         ) VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
       `, [
-        titulo,
+        titulo.trim(),
         remitente || null,
         comision_id || null,
         req.session.usuario.id,
@@ -1300,57 +999,105 @@ static async getDocumentos(req, res) {
       // Buscar documentos similares solo si hay palabras clave
       let recomendaciones = [];
       if (palabrasClave.length > 0 && contenidoTexto.trim().length > 100) {
-        console.log('🔍 Buscando documentos similares...');
-        recomendaciones = await DocumentController.findSimilarDocuments(
-          nuevoDocumento.id,
-          contenidoTexto,
-          palabrasClave
-        );
-        console.log(`💡 Documentos similares encontrados: ${recomendaciones.length}`);
-      }
+        try {
+          console.log('🔍 Buscando documentos similares...');
+          recomendaciones = await DocumentController.findSimilarDocuments(
+            nuevoDocumento.id,
+            contenidoTexto,
+            palabrasClave
+          );
+          console.log(`💡 Documentos similares encontrados: ${recomendaciones.length}`);
 
-      // Actualizar documento con recomendaciones
-      if (recomendaciones.length > 0) {
-        await client.query(`
-          UPDATE documentos 
-          SET recomendaciones = $1 
-          WHERE id = $2
-        `, [JSON.stringify(recomendaciones), nuevoDocumento.id]);
+          // Actualizar documento con recomendaciones
+          if (recomendaciones.length > 0) {
+            await client.query(`
+              UPDATE documentos 
+              SET recomendaciones = $1 
+              WHERE id = $2
+            `, [JSON.stringify(recomendaciones), nuevoDocumento.id]);
+          }
+        } catch (similarError) {
+          console.error('⚠️ Error buscando documentos similares:', similarError.message);
+          // Continuamos sin recomendaciones
+        }
       }
 
       await client.query('COMMIT');
 
-      console.log(`✅ Documento subido: ${titulo} por ${req.session.usuario.nombre}`);
-      console.log(`🔍 OCR aplicado: ${ocrAplicado ? 'Sí' : 'No'}`);
+      console.log(`✅ Documento subido exitosamente: ${titulo} por ${req.session.usuario.nombre}`);
       
-      res.json({
+      // Respuesta exitosa garantizada
+      return res.status(200).json({
         success: true,
-        documento: nuevoDocumento,
-        palabras_clave: palabrasClave,
-        recomendaciones: recomendaciones,
-        analisis: analisisNLP,
-        ocr_aplicado: ocrAplicado,
-        texto_extraido_length: contenidoTexto.length,
-        metadatos_procesamiento: metadatosProcesamiento
+        message: 'Documento subido y procesado con éxito',
+        documento: {
+          id: nuevoDocumento.id,
+          titulo: nuevoDocumento.titulo,
+          remitente: nuevoDocumento.remitente,
+          fecha_ingreso: nuevoDocumento.fecha_ingreso
+        },
+        procesamiento: {
+          palabras_clave_count: palabrasClave.length,
+          recomendaciones_count: recomendaciones.length,
+          ocr_aplicado: ocrAplicado,
+          texto_extraido_length: contenidoTexto.length,
+          analisis_completado: contenidoTexto.trim().length > 50
+        }
       });
 
     } catch (error) {
       await client.query('ROLLBACK');
+      console.error('❌ Error crítico subiendo documento:', error);
       
-      // Eliminar archivo si hubo error
-      if (req.file && req.file.path) {
-        this.limpiarArchivo(req.file.path);
-      }
-
-      console.error('❌ Error subiendo documento:', error);
-      res.status(500).json({ 
-        error: 'Error subiendo documento',
-        details: error.message 
+      // Respuesta de error garantizada
+      return res.status(500).json({ 
+        success: false,
+        error: 'Error procesando documento',
+        details: error.message,
+        timestamp: new Date().toISOString()
       });
+      
     } finally {
       client.release();
+      
+      // Limpiar archivo en caso de error
+      if (archivoPath && req.file) {
+        try {
+          this.limpiarArchivo(archivoPath);
+        } catch (cleanError) {
+          console.error('Error limpiando archivo:', cleanError.message);
+        }
+      }
     }
-  }
+}
+
+    static async previewDocumento(req, res) {
+      try {
+          const { id } = req.params;
+          // Solo necesitamos la ruta del archivo
+          const result = await query('SELECT archivo_path FROM documentos WHERE id = $1', [id]);
+          
+          if (result.rows.length === 0) {
+              return res.status(404).send('Documento no encontrado.');
+          }
+
+          const document = result.rows[0];
+          const filePath = path.resolve(document.archivo_path);
+
+          // Verificar si el archivo físico existe
+          if (fs.existsSync(filePath)) {
+              // res.sendFile envía el archivo para ser mostrado en el navegador (inline)
+              res.sendFile(filePath);
+          } else {
+              res.status(404).send('El archivo no fue encontrado en el servidor.');
+          }
+
+      } catch (error) {
+          console.error('Error al previsualizar el documento:', error);
+          res.status(500).send('Error interno del servidor.');
+      }
+    }
+
 
   // Descargar documento
   static async downloadDocumento(req, res) {
@@ -1686,6 +1433,78 @@ static async getDocumentos(req, res) {
       return [];
     }
   }
+
+  static async sugerirReglamentos(idsDeDocumentosDeSesion) {
+        console.log(`🧠 Iniciando sugerencia de reglamentos para ${idsDeDocumentosDeSesion.length} documento(s).`);
+        if (!idsDeDocumentosDeSesion || idsDeDocumentosDeSesion.length === 0) {
+            console.log('⚠️ No hay documentos de sesión para analizar, no se sugieren reglamentos.');
+            return []; // No hay documentos, no hay sugerencias
+        }
+
+        try {
+            // 1. OBTENER EL CONTENIDO COMBINADO DE LOS DOCUMENTOS DE LA SESIÓN
+            const params = idsDeDocumentosDeSesion.map((_, i) => `$${i + 1}`).join(',');
+            const documentosSesionResult = await query(
+                `SELECT contenido_texto, palabras_clave FROM documentos WHERE id IN (${params})`,
+                idsDeDocumentosDeSesion
+            );
+
+            if (documentosSesionResult.rows.length === 0) {
+                return [];
+            }
+
+            // Unimos todo el texto y palabras clave en un solo "perfil de contenido" para la sesión
+            const perfilContenidoSesion = documentosSesionResult.rows.map(d => d.contenido_texto).join(' \n ');
+            const perfilKeywordsSesion = [...new Set(documentosSesionResult.rows.flatMap(d => d.palabras_clave || []))];
+
+            console.log(`📝 Perfil de sesión creado con ${perfilKeywordsSesion.length} palabras clave únicas.`);
+
+            // 2. OBTENER TODOS LOS REGLAMENTOS DE LA BASE DE DATOS
+            const reglamentosResult = await query(
+                `SELECT id, titulo, contenido_texto, palabras_clave FROM documentos WHERE categoria = 'Reglamento'`
+            );
+            const todosLosReglamentos = reglamentosResult.rows;
+            console.log(`📚 Encontrados ${todosLosReglamentos.length} reglamentos en la base de conocimiento.`);
+
+            // 3. CALCULAR SIMILITUD Y ENCONTRAR LOS MÁS RELEVANTES
+            const sugerencias = [];
+            for (const reglamento of todosLosReglamentos) {
+                // No sugerir un reglamento si ya está incluido en los documentos de la sesión
+                if (idsDeDocumentosDeSesion.includes(reglamento.id)) {
+                    continue;
+                }
+
+                // Usamos la lógica de similitud que ya tienes!
+                const similitud = this.calculateSimilarity(
+                    perfilKeywordsSesion,
+                    reglamento.palabras_clave || [],
+                    perfilContenidoSesion,
+                    reglamento.contenido_texto || ''
+                );
+
+                if (similitud > 0.15) { // Umbral de similitud del 15% (puedes ajustarlo)
+                    sugerencias.push({
+                        id: reglamento.id,
+                        titulo: reglamento.titulo,
+                        similitud: similitud
+                    });
+                }
+            }
+
+            // 4. DEVOLVER LAS MEJORES SUGERENCIAS
+            const topSugerencias = sugerencias
+                .sort((a, b) => b.similitud - a.similitud)
+                .slice(0, 5); // Devolvemos hasta 5 sugerencias
+
+            console.log(`✅ Sugerencias generadas: ${topSugerencias.length}`);
+            return topSugerencias.map(s => s.titulo); // Devolvemos solo los títulos
+
+        } catch (error) {
+            console.error('❌ Error crítico al sugerir reglamentos:', error);
+            return ['Error al procesar sugerencias']; // Devolver un error manejable
+        }
+    }
+
 
   // Calcular similitud entre documentos (mejorado)
   static calculateSimilarity(keywords1, keywords2, texto1, texto2) {
