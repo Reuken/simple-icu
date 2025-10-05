@@ -510,8 +510,16 @@ app.get('/api/documentos', requireAuth, requireRole(['administrativo', 'consejer
   DocumentController.getDocumentos(req, res);
 });
 
-app.post('/api/documentos', requireAuth, requireRole(['administrativo']), upload.single('archivo'), (req, res) => {
-  DocumentController.uploadDocumento(req, res);
+app.post('/api/documentos', requireAuth, requireRole(['administrativo', 'superadmin']), upload.single('archivo'),  async (req, res) => {
+    // Responder inmediatamente
+    res.status(202).end();
+    
+    // Procesar
+    setImmediate(() => {
+        DocumentController.uploadDocumento(req, res).catch(err => {
+            console.error('Error procesando:', err);
+        });
+    });
 });
 
 app.get('/api/documentos/:id/download', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {

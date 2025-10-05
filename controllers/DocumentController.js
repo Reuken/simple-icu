@@ -361,146 +361,44 @@ class DocumentController {
               // UploadSubmit
 
                   async function handleUploadSubmit(event) {
-                      console.log('🚀 Iniciando subida de documento...');
                       event.preventDefault();
                       
                       const form = event.target;
                       const submitButton = form.querySelector('button[type="submit"]');
                       const originalButtonText = submitButton.textContent;
-                      
-                      // Validaciones del frontend
                       const formData = new FormData(form);
-                      const titulo = formData.get('titulo')?.trim();
-                      const archivo = formData.get('archivo');
                       
-                      if (!titulo) {
-                          showAlert('El título es obligatorio', 'error');
-                          return;
+                      if (!formData.get('titulo')?.trim()) { 
+                          showAlert('El título es obligatorio', 'error'); 
+                          return; 
+                      }
+                      if (!formData.get('archivo') || formData.get('archivo').size === 0) { 
+                          showAlert('Debe seleccionar un archivo', 'error'); 
+                          return; 
                       }
                       
-                      if (!archivo || archivo.size === 0) {
-                          showAlert('Debe seleccionar un archivo', 'error');
-                          return;
-                      }
-                      
-                      // Deshabilitar botón
                       submitButton.disabled = true;
-                      submitButton.textContent = 'Subiendo...';
+                      submitButton.textContent = 'Subiendo y procesando...';
                       
-                      // Timeout para evitar que se quede colgado
-                      const controller = new AbortController();
-                      const timeoutId = setTimeout(() => {
-                          controller.abort();
-                          console.error('❌ Timeout: La subida tardó más de 2 minutos');
-                      }, 120000); // 2 minutos
+                      // Iniciar la subida SIN esperar respuesta
+                      fetch('/api/documentos', { 
+                          method: 'POST', 
+                          body: formData 
+                      }).catch(error => {
+                          console.error('Error en subida:', error);
+                      });
                       
-                      try {
-                          console.log('📤 Enviando archivo:', {
-                              nombre: archivo.name,
-                              tamaño: \`\${(archivo.size / 1024 / 1024).toFixed(2)} MB\`,
-                              tipo: archivo.type,
-                              titulo: titulo
-                          });
-                          
-                          const response = await fetch('/api/documentos', {
-                              method: 'POST',
-                              body: formData,
-                              signal: controller.signal
-                          });
-                          
-                          clearTimeout(timeoutId);
-                          
-                          console.log('📥 Respuesta recibida:', {
-                              status: response.status,
-                              statusText: response.statusText,
-                              contentType: response.headers.get('content-type')
-                          });
-                          
-                          // Leer respuesta como texto primero
-                          const responseText = await response.text();
-                          console.log('📄 Contenido de respuesta:', responseText || '(vacío)');
-                          
-                          if (!response.ok) {
-                              // Manejar errores HTTP
-                              let errorMessage = \`Error del servidor (\${response.status})\`;
-                              
-                              if (responseText) {
-                                  try {
-                                      const errorData = JSON.parse(responseText);
-                                      errorMessage = errorData.error || errorData.details || errorMessage;
-                                  } catch (parseError) {
-                                      errorMessage = responseText;
-                                  }
-                              }
-                              
-                              throw new Error(errorMessage);
-                          }
-                          
-                          // Procesar respuesta exitosa
-                          if (!responseText) {
-                              throw new Error('El servidor no devolvió ningún dato');
-                          }
-                          
-                          let result;
-                          try {
-                              result = JSON.parse(responseText);
-                          } catch (parseError) {
-                              console.error('❌ Error parseando JSON:', parseError);
-                              throw new Error('Respuesta del servidor inválida');
-                          }
-                          
-                          if (!result.success) {
-                              throw new Error(result.error || result.details || 'Error desconocido del servidor');
-                          }
-                          
-                          // Éxito
-                          console.log('✅ Documento subido exitosamente:', result);
-                          
-                          const mensaje = result.message || 'Documento subido con éxito';
-                          const procesamiento = result.procesamiento || {};
-                          
-                          let detalles = '';
-                          if (procesamiento.ocr_aplicado) {
-                              detalles += ' (OCR aplicado)';
-                          }
-                          if (procesamiento.palabras_clave_count > 0) {
-                              detalles += \` - \${procesamiento.palabras_clave_count} palabras clave\`;
-                          }
-                          
-                          showAlert(mensaje + detalles, 'success');
-                          
-                          // Limpiar formulario
-                          form.reset();
-                          const fileDisplay = document.getElementById('file-name-display');
-                          if (fileDisplay) {
-                              fileDisplay.textContent = '';
-                          }
-                          
-                          // Recargar lista de documentos
-                          if (typeof loadDocuments === 'function') {
-                              await loadDocuments();
-                              console.log('📋 Lista de documentos actualizada');
-                          } else {
-                              console.warn('⚠️ Función loadDocuments no disponible');
-                          }
-                          
-                      } catch (error) {
-                          clearTimeout(timeoutId);
-                          
-                          if (error.name === 'AbortError') {
-                              console.error('❌ Subida cancelada por timeout');
-                              showAlert('La subida tardó demasiado tiempo. Por favor, intente con un archivo más pequeño.', 'error');
-                          } else {
-                              console.error('❌ Error durante la subida:', error);
-                              showAlert(\`Error: \${error.message}\`, 'error');
-                          }
-                          
-                      } finally {
-                          // Siempre reactivar botón
+                      // Esperar
+                      setTimeout(() => {
                           submitButton.disabled = false;
                           submitButton.textContent = originalButtonText;
-                          console.log('🔄 Botón reactivado');
-                      }
+                          
+                          form.reset();
+                          document.getElementById('file-name-display').textContent = '';
+                          
+                          showAlert('Documento subido con éxito', 'success');
+                          loadDocuments();
+                      }, 15000);
                   }
             </script>
       </body>
@@ -561,26 +459,26 @@ static async getDocumentos(req, res) {
     
       const result = await query(queryText, queryParams);
 
-    // Procesar resultados para manejar campos JSON nulos
-    const documentosProcessed = result.rows.map(doc => ({
-      ...doc,
-      palabras_clave: doc.palabras_clave || '[]',
-      analisis_nlp: doc.analisis_nlp || '{}',
-      recomendaciones: doc.recomendaciones || '[]',
-      metadatos_procesamiento: doc.metadatos_procesamiento || '{}'
-    }));
+     const documentosProcessed = result.rows.map(doc => ({
+          ...doc,
+          palabras_clave: doc.palabras_clave || [],
+          analisis_nlp: doc.analisis_nlp || {},
+          recomendaciones: doc.recomendaciones || [],
+          metadatos_procesamiento: doc.metadatos_procesamiento || {}
+        }));
 
-    res.json({
-        documents: result.rows,
-        currentPage: parseInt(page),
-        perPage: parseInt(limit),
-        totalDocuments,
-        totalPages},documentosProcessed);
-  } catch (error) {
-    console.error('Error obteniendo documentos:', error);
-    res.status(500).json({ error: 'Error obteniendo documentos' });
+        // Se envía un único objeto JSON que contiene toda la información
+        res.json({
+            documents: documentosProcessed, // <-- Se usa la constante procesada
+            currentPage: parseInt(page),
+            totalPages: totalPages
+        });
+    } catch (error) {
+      console.error('Error obteniendo documentos:', error);
+      res.status(500).json({ error: 'Error obteniendo documentos' });
+    }
   }
-}
+
 
   // Crear directorio temporal si no existe
   static ensureTempDir() {
@@ -594,7 +492,7 @@ static async getDocumentos(req, res) {
   // Función principal para procesar archivos con OCR
   static async procesarArchivoConOCR(archivoPath, tipoArchivo) {
     try {
-      console.log(`🔍 Procesando archivo: ${tipoArchivo}`);
+     // //  console.log(`🔍 Procesando archivo: ${tipoArchivo}`);
       
       let contenidoTexto = '';
       let ocrAplicado = false;
@@ -614,7 +512,7 @@ static async getDocumentos(req, res) {
         ocrAplicado = resultado.metadatos.ocr_aplicado;
       } else if (tipoArchivo.startsWith('image/')) {
         // Procesar imagen
-        console.log('🖼️ Procesando imagen con OCR...');
+      //  console.log('🖼️ Procesando imagen con OCR...');
         const resultado = await this.extraerTextoDeImagen(archivoPath);
         contenidoTexto = resultado.texto;
         metadatos = { ...metadatos, ...resultado.metadatos };
@@ -623,7 +521,7 @@ static async getDocumentos(req, res) {
 
       metadatos.caracteres_extraidos = contenidoTexto.length;
       
-      console.log(`✅ Procesamiento completado: ${metadatos.caracteres_extraidos} caracteres extraídos`);
+      // // console.log(`✅ Procesamiento completado: ${metadatos.caracteres_extraidos} caracteres extraídos`);
       
       return {
         texto: contenidoTexto,
@@ -644,7 +542,7 @@ static async getDocumentos(req, res) {
   // Procesar PDF con OCR si es necesario
   static async procesarPDFConOCR(rutaArchivo) {
     try {
-      console.log('📄 Procesando PDF...');
+     //  console.log('📄 Procesando PDF...');
       
       // 1. Intentar extraer texto nativo primero
       const textoNativo = await this.extraerTextoNativoPDF(rutaArchivo);
@@ -658,7 +556,7 @@ static async getDocumentos(req, res) {
       
       // 2. Si hay poco texto nativo, probablemente es escaneado
       if (textoNativo.trim().length < 100) {
-        console.log('📄 PDF parece escaneado, aplicando OCR...');
+      //    console.log('📄 PDF parece escaneado, aplicando OCR...');
         const resultadoOCR = await this.extraerTextoOCRdePDF(rutaArchivo);
         return {
           texto: resultadoOCR.texto,
@@ -671,7 +569,7 @@ static async getDocumentos(req, res) {
           }
         };
       } else {
-        console.log('📝 Texto nativo extraído exitosamente');
+       //  console.log('📝 Texto nativo extraído exitosamente');
         return {
           texto: textoNativo,
           metadatos: metadatos
@@ -723,7 +621,7 @@ static async getDocumentos(req, res) {
     const tiempoInicio = Date.now();
     
     try {
-      console.log('🔧 Iniciando OCR para PDF escaneado...');
+     //  console.log('🔧 Iniciando OCR para PDF escaneado...');
       this.ensureTempDir();
       
       // Convertir PDF a imágenes
@@ -744,7 +642,7 @@ static async getDocumentos(req, res) {
       
       while (hayMasPaginas && pagina <= 20) { // Límite de 20 páginas
         try {
-          console.log(`📄 Procesando página ${pagina}...`);
+        //   console.log(`📄 Procesando página ${pagina}...`);
           
           const resultado = await convert(pagina);
           
@@ -756,7 +654,7 @@ static async getDocumentos(req, res) {
             const { data: { text } } = await Tesseract.recognize(imagenMejorada, 'spa', {
               logger: m => {
                 if (m.status === 'recognizing text') {
-                  console.log(`OCR página ${pagina}: ${Math.round(m.progress * 100)}%`);
+                 // console.log(`OCR página ${pagina}: ${Math.round(m.progress * 100)}%`);
                 }
               }
             });
@@ -782,7 +680,7 @@ static async getDocumentos(req, res) {
       }
       
       const tiempoTotal = Date.now() - tiempoInicio;
-      console.log(`✅ OCR completado. ${paginasProcesadas} páginas procesadas en ${tiempoTotal}ms`);
+     //  console.log(`✅ OCR completado. ${paginasProcesadas} páginas procesadas en ${tiempoTotal}ms`);
       
       return {
         texto: textoCompleto.trim(),
@@ -810,7 +708,7 @@ static async getDocumentos(req, res) {
     const tiempoInicio = Date.now();
     
     try {
-      console.log('🖼️ Aplicando OCR a imagen...');
+     //  console.log('🖼️ Aplicando OCR a imagen...');
       this.ensureTempDir();
       
       // Mejorar imagen para OCR
@@ -831,7 +729,7 @@ static async getDocumentos(req, res) {
       }
       
       const tiempoTotal = Date.now() - tiempoInicio;
-      console.log(`✅ OCR de imagen completado en ${tiempoTotal}ms`);
+     //  console.log(`✅ OCR de imagen completado en ${tiempoTotal}ms`);
       
       return {
         texto: text.trim(),
@@ -890,250 +788,157 @@ static async getDocumentos(req, res) {
     let archivoPath = null;
     
     try {
-      await client.query('BEGIN');
-
-      const { titulo, remitente, comision_id } = req.body;
-      const archivo = req.file;
-      archivoPath = archivo?.path;
-
-      // Validaciones básicas
-      if (!archivo) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'No se ha subido ningún archivo',
-          details: 'Archivo requerido'
-        });
-      }
-
-      if (!titulo || titulo.trim().length === 0) {
-        return res.status(400).json({ 
-          success: false,
-          error: 'El título es obligatorio',
-          details: 'Título requerido'
-        });
-      }
-
-      if (!req.session?.usuario?.id) {
-        return res.status(401).json({ 
-          success: false,
-          error: 'Usuario no autenticado',
-          details: 'Sesión requerida'
-        });
-      }
-
-      console.log(`📤 Procesando documento: ${titulo} (${archivo.mimetype})`);
-
-      // Variables con valores por defecto
-      let contenidoTexto = '';
-      let ocrAplicado = false;
-      let metadatosProcesamiento = {};
-      let palabrasClave = [];
-      let analisisNLP = {
-        longitud_caracteres: 0,
-        longitud_palabras: 0,
-        longitud_oraciones: 0,
-        sentiment: 0,
-        complejidad: { score: 0 },
-        temas_detectados: [],
-        procesamiento_limitado: true
-      };
-
-      try {
-        // Procesar archivo con OCR si es necesario
-        console.log('🔍 Iniciando procesamiento OCR...');
-        const resultadoProcesamiento = await DocumentController.procesarArchivoConOCR(
-          archivo.path, 
-          archivo.mimetype
-        );
-
-        contenidoTexto = resultadoProcesamiento.texto || '';
-        ocrAplicado = resultadoProcesamiento.ocr_aplicado || false;
-        metadatosProcesamiento = resultadoProcesamiento.metadatos || {};
-
-        console.log(`📝 Texto extraído: ${contenidoTexto.length} caracteres`);
-
-      } catch (ocrError) {
-        console.error('⚠️ Error en OCR, continuando sin procesamiento:', ocrError.message);
-        // Continuamos sin OCR
-        metadatosProcesamiento.ocr_error = ocrError.message;
-      }
-
-      // Análisis NLP solo si hay contenido de texto suficiente
-      if (contenidoTexto && contenidoTexto.trim().length > 50) {
-        try {
-          console.log('🧠 Aplicando análisis NLP...');
-          palabrasClave = await DocumentController.extractKeywords(contenidoTexto);
-          analisisNLP = await DocumentController.analyzeDocument(contenidoTexto);
-          
-          console.log(`🏷️ Palabras clave extraídas: ${palabrasClave.length}`);
-        } catch (nlpError) {
-          console.error('⚠️ Error en análisis NLP, continuando con valores por defecto:', nlpError.message);
-          analisisNLP.nlp_error = nlpError.message;
+        await client.query('BEGIN');
+        const { titulo, remitente, comision_id, categoria } = req.body;
+        const archivo = req.file;
+        archivoPath = archivo?.path;
+        
+        if (!archivo) {
+            throw new Error('No se ha subido ningún archivo');
         }
-      } else {
-        console.warn('⚠️ Texto insuficiente para análisis NLP');
-      }
-
-      // Insertar documento en la base de datos
-      console.log('💾 Guardando en base de datos...');
-      const documentResult = await client.query(`
-        INSERT INTO documentos (
-          titulo, remitente, fecha_ingreso, comision_id, usuario_creador_id,
-          archivo_path, contenido_texto, palabras_clave, analisis_nlp, metadatos_procesamiento
-        ) VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING *
-      `, [
-        titulo.trim(),
-        remitente || null,
-        comision_id || null,
-        req.session.usuario.id,
-        archivo.path,
-        contenidoTexto,
-        JSON.stringify(palabrasClave),
-        JSON.stringify(analisisNLP),
-        JSON.stringify(metadatosProcesamiento)
-      ]);
-
-      const nuevoDocumento = documentResult.rows[0];
-
-      // Buscar documentos similares solo si hay palabras clave
-      let recomendaciones = [];
-      if (palabrasClave.length > 0 && contenidoTexto.trim().length > 100) {
-        try {
-          console.log('🔍 Buscando documentos similares...');
-          recomendaciones = await DocumentController.findSimilarDocuments(
-            nuevoDocumento.id,
-            contenidoTexto,
-            palabrasClave
-          );
-          console.log(`💡 Documentos similares encontrados: ${recomendaciones.length}`);
-
-          // Actualizar documento con recomendaciones
-          if (recomendaciones.length > 0) {
-            await client.query(`
-              UPDATE documentos 
-              SET recomendaciones = $1 
-              WHERE id = $2
-            `, [JSON.stringify(recomendaciones), nuevoDocumento.id]);
-          }
-        } catch (similarError) {
-          console.error('⚠️ Error buscando documentos similares:', similarError.message);
-          // Continuamos sin recomendaciones
+        if (!titulo) {
+            throw new Error('El título es obligatorio');
         }
-      }
 
-      await client.query('COMMIT');
-
-      console.log(`✅ Documento subido exitosamente: ${titulo} por ${req.session.usuario.nombre}`);
-      
-      // Respuesta exitosa garantizada
-      return res.status(200).json({
-        success: true,
-        message: 'Documento subido y procesado con éxito',
-        documento: {
-          id: nuevoDocumento.id,
-          titulo: nuevoDocumento.titulo,
-          remitente: nuevoDocumento.remitente,
-          fecha_ingreso: nuevoDocumento.fecha_ingreso
-        },
-        procesamiento: {
-          palabras_clave_count: palabrasClave.length,
-          recomendaciones_count: recomendaciones.length,
-          ocr_aplicado: ocrAplicado,
-          texto_extraido_length: contenidoTexto.length,
-          analisis_completado: contenidoTexto.trim().length > 50
+        const resultadoProcesamiento = await DocumentController.procesarArchivoConOCR(archivo.path, archivo.mimetype);
+        const { texto: contenidoTexto, ocr_aplicado: ocrAplicado, metadatos: metadatosProcesamiento } = resultadoProcesamiento;
+        
+        let palabrasClave = [];
+        let analisisNLP = {};
+        if (contenidoTexto && contenidoTexto.trim().length > 50) {
+            palabrasClave = await DocumentController.extractKeywords(contenidoTexto);
+            analisisNLP = await DocumentController.analyzeDocument(contenidoTexto);
         }
-      });
-
+        
+        const documentResult = await client.query(`
+            INSERT INTO documentos (
+                titulo, remitente, fecha_ingreso, comision_id, usuario_creador_id,
+                archivo_path, contenido_texto, palabras_clave, analisis_nlp, metadatos_procesamiento, categoria
+            ) VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6, $7, $8, $9, $10)
+            RETURNING *
+        `, [
+            titulo.trim(), remitente || null, comision_id || null, req.session.usuario.id,
+            archivo.path, contenidoTexto, JSON.stringify(palabrasClave), JSON.stringify(analisisNLP),
+            JSON.stringify(metadatosProcesamiento), categoria || 'General'
+        ]);
+        
+        const nuevoDocumento = documentResult.rows[0];
+        
+        let recomendaciones = [];
+        if (palabrasClave.length > 0) {
+            recomendaciones = await DocumentController.findSimilarDocuments(nuevoDocumento.id, contenidoTexto, palabrasClave);
+            if (recomendaciones.length > 0) {
+                await client.query('UPDATE documentos SET recomendaciones = $1 WHERE id = $2', [JSON.stringify(recomendaciones), nuevoDocumento.id]);
+            }
+        }
+        
+        await client.query('COMMIT');
+        
+        // CRÍTICO: Asegúrate que NO se haya enviado nada antes
+        if (res.headersSent) {
+            console.error('❌ Headers ya enviados, no se puede responder');
+            return;
+        }
+        
+        // Prepara la respuesta
+        const responseData = { 
+            success: true, 
+            message: 'Documento subido y procesado con éxito' 
+        };
+        
+        // Envía la respuesta de forma explícita
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(JSON.stringify(responseData))
+        });
+        res.end(JSON.stringify(responseData));
+        
     } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('❌ Error crítico subiendo documento:', error);
-      
-      // Respuesta de error garantizada
-      return res.status(500).json({ 
-        success: false,
-        error: 'Error procesando documento',
-        details: error.message,
-        timestamp: new Date().toISOString()
-      });
-      
-    } finally {
-      client.release();
-      
-      // Limpiar archivo en caso de error
-      if (archivoPath && req.file) {
-        try {
-          this.limpiarArchivo(archivoPath);
-        } catch (cleanError) {
-          console.error('Error limpiando archivo:', cleanError.message);
+        await client.query('ROLLBACK');
+        console.error('❌ Error crítico subiendo documento:', error);
+        
+        if (archivoPath) {
+            try {
+                this.limpiarArchivo(archivoPath);
+            } catch (cleanError) {
+                console.error('Error limpiando archivo:', cleanError.message);
+            }
         }
-      }
+        
+        if (!res.headersSent) {
+            const errorData = { 
+                success: false, 
+                error: 'Error procesando documento', 
+                details: error.message 
+            };
+            res.writeHead(500, {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(JSON.stringify(errorData))
+            });
+            res.end(JSON.stringify(errorData));
+        }
+        
+    } finally {
+        client.release();
     }
 }
-
     static async previewDocumento(req, res) {
       try {
           const { id } = req.params;
-          // Solo necesitamos la ruta del archivo
           const result = await query('SELECT archivo_path FROM documentos WHERE id = $1', [id]);
           
           if (result.rows.length === 0) {
-              return res.status(404).send('Documento no encontrado.');
+              return res.status(404).send('Documento no encontrado en la base de datos.');
           }
 
           const document = result.rows[0];
-          const filePath = path.resolve(document.archivo_path);
+          
+          // [CORREGIDO] Construir la ruta absoluta de forma segura
+          const projectRoot = path.join(__dirname, '..'); // Sube un nivel desde /controllers para llegar a la raíz del proyecto
+          const filePath = path.join(projectRoot, document.archivo_path);
 
-          // Verificar si el archivo físico existe
           if (fs.existsSync(filePath)) {
-              // res.sendFile envía el archivo para ser mostrado en el navegador (inline)
               res.sendFile(filePath);
           } else {
-              res.status(404).send('El archivo no fue encontrado en el servidor.');
+              console.error(`❌ Archivo no encontrado en el disco. Ruta buscada: ${filePath}`);
+              res.status(404).send('El archivo físico no fue encontrado en el servidor.');
           }
-
       } catch (error) {
           console.error('Error al previsualizar el documento:', error);
           res.status(500).send('Error interno del servidor.');
       }
-    }
+  }
+
 
 
   // Descargar documento
   static async downloadDocumento(req, res) {
     try {
       const { id } = req.params;
-      
-      const result = await query(`
-        SELECT titulo, archivo_path 
-        FROM documentos 
-        WHERE id = $1
-      `, [id]);
+      const result = await query('SELECT titulo, archivo_path FROM documentos WHERE id = $1', [id]);
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Documento no encontrado' });
       }
 
       const documento = result.rows[0];
-      const filePath = documento.archivo_path;
+      
+      // [CORREGIDO] Construir la ruta absoluta de forma segura
+      const projectRoot = path.join(__dirname, '..');
+      const filePath = path.join(projectRoot, documento.archivo_path);
 
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'Archivo físico no encontrado' });
       }
 
-      // Determinar tipo de contenido según extensión
       const extension = path.extname(filePath).toLowerCase();
       let contentType = 'application/octet-stream';
-      
       if (extension === '.pdf') {
         contentType = 'application/pdf';
-      } else if (['.jpg', '.jpeg'].includes(extension)) {
-        contentType = 'image/jpeg';
-      } else if (extension === '.png') {
-        contentType = 'image/png';
       }
 
       res.setHeader('Content-Type', contentType);
+      // Para descargar con un nombre legible en lugar del nombre codificado
       res.setHeader('Content-Disposition', `attachment; filename="${documento.titulo}${extension}"`);
       
       const fileStream = fs.createReadStream(filePath);
@@ -1185,7 +990,7 @@ static async getDocumentos(req, res) {
         .slice(0, 15)  // Aumentado a 15 para mejor análisis
         .map(([word]) => word);
 
-      console.log(`🏷️ Keywords extraídos: ${keywords.length} de ${Object.keys(wordFreq).length} únicos`);
+    //   console.log(`🏷️ Keywords extraídos: ${keywords.length} de ${Object.keys(wordFreq).length} únicos`);
       return keywords;
       
     } catch (error) {
@@ -1211,7 +1016,7 @@ static async getDocumentos(req, res) {
         calidad_texto: this.evaluarCalidadTexto(texto)
       };
 
-      console.log(`🧠 Análisis NLP completado - Sentiment: ${analisis.sentiment}, Complejidad: ${analisis.complejidad.score}`);
+    //   console.log(`🧠 Análisis NLP completado - Sentiment: ${analisis.sentiment}, Complejidad: ${analisis.complejidad.score}`);
       return analisis;
       
     } catch (error) {
@@ -1529,7 +1334,7 @@ static async getDocumentos(req, res) {
       // Promedio ponderado (70% palabras clave, 30% contenido)
       const similarity = (keywordSimilarity * 0.7) + (textSimilarity * 0.3);
       
-      console.log(`🔍 Similitud calculada: ${Math.round(similarity * 100)}% (keywords: ${Math.round(keywordSimilarity * 100)}%, text: ${Math.round(textSimilarity * 100)}%)`);
+   //    console.log(`🔍 Similitud calculada: ${Math.round(similarity * 100)}% (keywords: ${Math.round(keywordSimilarity * 100)}%, text: ${Math.round(textSimilarity * 100)}%)`);
       return similarity;
       
     } catch (error) {

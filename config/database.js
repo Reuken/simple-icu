@@ -21,22 +21,22 @@ const dbConfig = {
 const pool = new Pool(dbConfig);
 
 // Eventos del pool
-pool.on('connect', (client) => {
-  console.log('🔌 Nueva conexión establecida a PostgreSQL');
-});
+// pool.on('connect', (client) => {
+//   console.log('🔌 Nueva conexión establecida a PostgreSQL');
+// });
 
 pool.on('error', (err, client) => {
   console.error('❌ Error inesperado en cliente PostgreSQL:', err);
   process.exit(-1);
 });
 
-pool.on('acquire', (client) => {
-  console.log('📦 Cliente adquirido del pool');
-});
+// // pool.on('acquire', (client) => {
+ // //  console.log('📦 Cliente adquirido del pool');
+// });
 
-pool.on('release', (client) => {
-  console.log('🔓 Cliente liberado de vuelta al pool');
-});
+// pool.on('release', (client) => {
+ //  console.log('🔓 Cliente liberado de vuelta al pool');
+// });
 
 // Función para realizar queries
 async function query(text, params) {
@@ -45,14 +45,14 @@ async function query(text, params) {
     const result = await pool.query(text, params);
     const duration = Date.now() - start;
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔍 Query ejecutado:', {
-        query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-        params: params ? params.length : 0,
-        duration: duration + 'ms',
-        rows: result.rowCount
-      });
-    }
+//     if (process.env.NODE_ENV === 'development') {
+ //      console.log('🔍 Query ejecutado:', {
+  //       query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+ //        params: params ? params.length : 0,
+  //       duration: duration + 'ms',
+  //       rows: result.rowCount
+   //    });
+  //   }
     
     return result;
   } catch (error) {
@@ -80,13 +80,13 @@ async function getClient() {
         const result = await originalQuery(text, params);
         const duration = Date.now() - start;
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 Transaction query:', {
-            query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
-            duration: duration + 'ms',
-            rows: result.rowCount
-          });
-        }
+ //       if (process.env.NODE_ENV === 'development') {
+ //         console.log('🔍 Transaction query:', {
+ //           query: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+ //           duration: duration + 'ms',
+ //           rows: result.rowCount
+//        });
+ //      }
         
         return result;
       } catch (error) {
