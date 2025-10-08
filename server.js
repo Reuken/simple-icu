@@ -212,11 +212,8 @@ function getPermisos(tipo_usuario, rol) {
     ver_documentos: false,
     subir_documentos: false,
     ver_comisiones: false, 
-//  gestionar_comisiones: false,
     ver_reportes: false,
-//  generar_reportes: false,
     ver_facultades: false,
-//  gestionar_facultades: false,
     ver_mi_espacio: false,
     gestionar_sesion:false
   };
@@ -429,7 +426,11 @@ app.get('/usuarios', requireAuth, requireRole(['administrativo', 'superadmin']),
             includeInactive: true 
         });
 
-        const facultades = await Facultad.getAll(); // Asumiendo que tienes este método
+        const facultades = await Facultad.getAll();
+
+        if (req.session.usuario.tipo_usuario === 'administrativo') {
+            usuariosData.usuarios = usuariosData.usuarios.filter(u => u.tipo_usuario !== 'superadmin');
+        }
 
         // Pasamos el objeto 'usuariosData' completo y las facultades
         res.send(generateUsuariosPage(usuariosData, facultades, req.session.usuario));
@@ -478,20 +479,25 @@ app.post('/api/usuarios/add', requireAuth, requireRole(['superadmin']), async (r
 app.post('/api/usuarios/edit/:id', requireAuth, requireRole(['administrativo', 'superadmin']), async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, email, es_activo } = req.body; // Solo los campos permitidos y 'es_activo'
+        
+        const usuarioAEditar = await Usuario.findById(id);
 
-        // El método update actual no es ideal, pero nos adaptamos a él.
-        // Primero, buscamos el usuario para tener una instancia de la clase.
-        const usuario = await Usuario.findById(id);
-        if (!usuario) {
+        if (!usuarioAEditar) {
             return res.status(404).send('Usuario no encontrado.');
         }
 
+        // Un 'administrativo' NO PUEDE editar a un 'superadmin'.
+        if (req.session.usuario.tipo_usuario === 'administrativo' && usuarioAEditar.tipo_usuario === 'superadmin') {
+            return res.status(403).send('Acción no permitida: Los administradores no pueden modificar a un superadmin.');
+        }
+        
+        const { nombre, email, es_activo } = req.body; // Solo los campos permitidos y 'es_activo'
+
         // Actualizamos los campos permitidos por el método update
-        await usuario.update({ nombre, email });
+        await usuarioAEditar.update({ nombre, email });
         
         // El estado 'es_activo' se maneja por separado, ya que update no lo soporta.
-        await usuario.setActive(es_activo === 'on');
+         await usuarioAEditar.setActive(es_activo === 'on');
 
         console.log(`✅ Usuario actualizado: ID ${id}`);
         res.redirect('/usuarios');
@@ -502,7 +508,7 @@ app.post('/api/usuarios/edit/:id', requireAuth, requireRole(['administrativo', '
 });
 
 // =================== RUTAS DE DOCUMENTOS ===================
-app.get('/documentos', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/documentos', requireAuth, requireRole(['administrativo', 'consejero' , 'superadmin']), (req, res) => {
   DocumentController.getDocumentosPage(req, res);
 });
 
@@ -529,8 +535,13 @@ app.get('/api/documentos/:id/download', requireAuth, requireRole(['administrativ
 app.get('/api/documentos/:id/preview', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
   DocumentController.previewDocumento(req, res);
 });
+
+app.delete('/api/documentos/:id', requireAuth, requireRole(['administrativo', 'superadmin']), (req, res) => {
+  DocumentController.deleteDocumento(req, res);
+});
+
 // =================== RUTAS DE COMISIONES ===================
-app.get('/comisiones', requireAuth, requireRole(['administrativo', 'consejero']), async (req, res) => {
+app.get('/comisiones', requireAuth, requireRole(['administrativo', 'consejero' , 'superadmin']), async (req, res) => {
   try {
     const comisiones = await Comision.getAll();
     const comisionesConDetalles = await Promise.all(
@@ -562,7 +573,7 @@ app.get('/comisiones', requireAuth, requireRole(['administrativo', 'consejero'])
 });
 
 // =================== RUTAS DE REPORTES ===================
-app.get('/reportes', requireAuth, requireRole(['administrativo']), (req, res) => {
+app.get('/reportes', requireAuth, requireRole(['administrativo' , 'superadmin']), (req, res) => {
   ReportController.getReportesPage(req, res);
 });
 
@@ -606,7 +617,7 @@ app.get('/api/comisiones', requireAuth, requireRole(['administrativo', 'consejer
 });
 
 // =================== RUTAS DE FACULTADES ===================
-app.get('/facultades', requireAuth, requireRole(['administrativo', 'consejero']), async (req, res) => {
+app.get('/facultades', requireAuth, requireRole(['administrativo', 'consejero' , 'superadmin']), async (req, res) => {
     try {
         // Esta llamada ahora usa el nuevo y optimizado método
         const facultadesData = await Facultad.obtenerTodasConConsejeros();
@@ -731,7 +742,7 @@ app.get('/health', async (req, res) => {
 
 // =================== RUTAS A MI ESPACIO ICU ===================
 
-app.get('/mi_espacio', requireAuth, requireRole(['consejero']), async (req, res) => {
+app.get('/mi_espacio', requireAuth, requireRole(['consejero', 'superadmin']), async (req, res) => {
     try {
         const usuario = req.session.usuario;
         

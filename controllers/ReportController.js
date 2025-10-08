@@ -43,106 +43,7 @@ class ReportController {
             <link rel="stylesheet" href="/estilos.css">
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <style>
-                .reports-container {
-                    max-width: 1400px;
-                    margin: 2rem auto;
-                    padding: 0 1rem;
-                }
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                    gap: 1rem;
-                    margin-bottom: 2rem;
-                }
-                .stat-card {
-                    background: white;
-                    padding: 1.5rem;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    text-align: center;
-                }
-                .stat-number {
-                    font-size: 2.5rem;
-                    font-weight: bold;
-                    color: #007BFF;
-                    margin: 0.5rem 0;
-                }
-                .ocr-stats {
-                    background: linear-gradient(135deg, #e8f4fd, #d1ecf1);
-                    border-left: 4px solid #17a2b8;
-                }
-                .chart-container {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .chart-wrapper {
-                    position: relative;
-                    height: 400px;
-                    margin: 1rem 0;
-                }
-                .nlp-analysis {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .keyword-cloud {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 0.5rem;
-                    margin: 1rem 0;
-                }
-                .keyword-item {
-                    padding: 0.5rem 1rem;
-                    background: linear-gradient(45deg, #007BFF, #0056b3);
-                    color: white;
-                    border-radius: 20px;
-                    font-size: 0.9rem;
-                    font-weight: 500;
-                }
-                .topic-analysis {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                    gap: 1rem;
-                    margin: 1rem 0;
-                }
-                .topic-card {
-                    padding: 1rem;
-                    background: #f8f9fa;
-                    border-radius: 8px;
-                    border-left: 4px solid #28a745;
-                }
-                .recent-docs {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .doc-item {
-                    padding: 1rem;
-                    border-bottom: 1px solid #eee;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-                .doc-item:last-child {
-                    border-bottom: none;
-                }
-                .sentiment-indicator {
-                    display: inline-block;
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    margin-right: 0.5rem;
-                }
-                .sentiment-positive { background-color: #28a745; }
-                .sentiment-neutral { background-color: #ffc107; }
-                .sentiment-negative { background-color: #dc3545; }
+
                 .ocr-indicator {
                     display: inline-block;
                     padding: 0.2rem 0.5rem;
@@ -153,32 +54,7 @@ class ReportController {
                 }
                 .ocr-applied { background: #17a2b8; color: white; }
                 .ocr-native { background: #28a745; color: white; }
-                .loading {
-                    text-align: center;
-                    padding: 2rem;
-                    font-size: 1.2rem;
-                    color: #666;
-                }
-                .error {
-                    background-color: #f8d7da;
-                    border: 1px solid #f5c6cb;
-                    color: #721c24;
-                    padding: 1rem;
-                    border-radius: 4px;
-                    margin: 1rem 0;
-                }
-                .refresh-btn {
-                    background: #007BFF;
-                    color: white;
-                    border: none;
-                    padding: 0.5rem 1rem;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    margin-bottom: 1rem;
-                }
-                .refresh-btn:hover {
-                    background: #0056b3;
-                }
+                
                 .btn {
                     padding: 0.4rem 0.8rem;
                     border: none;
@@ -196,36 +72,186 @@ class ReportController {
                     padding: 0.25rem 0.5rem;
                     font-size: 0.8rem;
                 }
-                .ocr-quality {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 8px;
-                    margin-bottom: 2rem;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .quality-grid {
+                /* --- Estructura Principal del Dashboard --- */
+                .dashboard-grid {
+                    max-width: 1600px;
+                    margin: 2rem auto;
+                    padding: 1rem;
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 1rem;
-                    margin: 1rem 0;
+                    grid-template-columns: 1fr; /* Una columna en móviles */
+                    gap: 2rem;
                 }
-                .quality-item {
+                @media (min-width: 1024px) {
+                    .dashboard-grid {
+                        /* Columna lateral fija y área de contenido principal flexible */
+                        grid-template-columns: 350px 1fr; 
+                    }
+                }
+
+                /* --- Estilo Base para Todas las Tarjetas --- */
+                .report-card {
+                    background-color: #ffffff;
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+                    border: 1px solid #eef;
+                }
+                .report-card h3 {
+                    font-size: 1.3rem;
+                    font-weight: 500;
+                    margin-top: 0;
+                    margin-bottom: 1.5rem;
+                    border-bottom: 2px solid #007BFF;
+                    padding-bottom: 0.5rem;
+                    display: inline-block;
+                }
+
+                /* --- Tarjeta de Bienvenida --- */
+                .welcome-card {
+                    background: linear-gradient(135deg, #007BFF, #0056b3);
+                    color: white;
+                    border-radius: 12px;
+                    padding: 2rem;
+                    box-shadow: 0 8px 30px rgba(0, 123, 255, 0.3);
+                }
+                .welcome-card h1 { color: white; font-size: 1.8rem; }
+                .welcome-card p { color: white; opacity: 0.9; }
+                
+                .refresh-btn {
+                    background: rgba(255, 255, 255, 0.2);
+                    color: white;
+                    border: 1px solid white;
+                    padding: 0.6rem 1.2rem;
+                    border-radius: 50px;
+                    cursor: pointer;
+                    margin-top: 1rem;
+                    font-weight: 500;
+                    transition: background-color 0.3s ease;
+                }
+                .refresh-btn:hover { background: rgba(255, 255, 255, 0.3); }
+                
+                /* --- Columna Lateral (Sidebar) --- */
+                .sidebar-column {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2rem;
+                }
+
+                /* --- Tarjetas de Estadísticas Clave --- */
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 1rem;
+                }
+                .stat-card {
                     padding: 1rem;
                     background: #f8f9fa;
-                    border-radius: 6px;
+                    border-radius: 8px;
                     text-align: center;
                 }
-                .quality-score {
-                    font-size: 1.8rem;
-                    font-weight: bold;
-                    margin: 0.5rem 0;
+                .stat-title { font-size: 0.8rem; color: #6c757d; font-weight: 500; }
+                .stat-number {
+                    font-size: 2rem;
+                    font-weight: 700;
+                    color: #007BFF;
+                    margin: 0.25rem 0;
                 }
-                .quality-excellent { color: #28a745; }
-                .quality-good { color: #007BFF; }
-                .quality-fair { color: #ffc107; }
-                .quality-poor { color: #dc3545; }
+
+                /* --- Área de Contenido Principal --- */
+                .main-content-column {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2rem;
+                }
+                
+                /* --- Contenedores de Gráficos --- */
+                .chart-container {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 2rem;
+                }
+                @media (min-width: 768px) {
+                    .chart-container {
+                        grid-template-columns: 1fr 1fr;
+                    }
+                }
+                .chart-wrapper {
+                    position: relative;
+                    height: 350px;
+                }
+
+                /* --- Estilos para NLP y Documentos Recientes --- */
+                .loading { text-align: center; padding: 2rem; color: #666; }
+                .error { background-color: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; padding: 1rem; border-radius: 4px; }
+                .keyword-cloud { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+                .keyword-item { background-color: #e3f2fd; color: #1565c0; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.9rem; }
+
+                .doc-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 1rem 0;
+                    border-bottom: 1px solid #f0f0f0;
+                }
+                .doc-item:last-child { border-bottom: none; }
+                .doc-item h5 { margin: 0; font-weight: 500; }
+                .doc-item p, .doc-item small { margin: 0; color: #6c757d; font-size: 0.9rem; }
+                
+                .sentiment-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; }
+                .sentiment-positive { background-color: #28a745; }
+                .sentiment-neutral { background-color: #ffc107; }
+                .sentiment-negative { background-color: #dc3545; }
+
+                /* --- Estilos para Tarjeta NLP Compacta --- */
+                    .nlp-grid-compact {
+                        display: grid;
+                        grid-template-columns: 1fr; /* Una columna en móviles */
+                        gap: 2rem;
+                    }
+                    @media (min-width: 768px) {
+                        .nlp-grid-compact {
+                            grid-template-columns: 2fr 1fr; /* Dos columnas en pantallas más grandes */
+                        }
+                    }
+
+                    .topic-list-compact .topic-item {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        background: #f8f9fa;
+                        padding: 0.5rem 1rem;
+                        border-radius: 6px;
+                        margin-bottom: 0.5rem;
+                    }
+                    .topic-list-compact .topic-item span {
+                        font-size: 0.9em;
+                        color: #6c757d;
+                    }
+
+                    .stat-card-compact {
+                        background: #f8f9fa;
+                        border-left: 4px solid #17a2b8;
+                        padding: 1rem;
+                        border-radius: 6px;
+                        margin-bottom: 1rem;
+                    }
+                    .stat-number-compact {
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        color: #333;
+                    }
+                    .stat-title-compact {
+                        font-size: 0.8rem;
+                        color: #6c757d;
+                    }
+
+                    .mt-2 {
+                        margin-top: 2rem;
+                    }
+
             </style>
         </head>
+
         <body>
             <nav>
                 <a href="/dashboard" class="logo">ICU Dashboard</a>
@@ -238,80 +264,85 @@ class ReportController {
                 </div>
             </nav>
 
-            <div class="reports-container">
-                <div class="welcome-card">
-                    <h1>📊 Reportes y Análisis NLP + OCR</h1>
-                    <p>Análisis inteligente de documentos con procesamiento OCR avanzado</p>
-                    <button class="refresh-btn" onclick="loadAllReports()">🔄 Actualizar Reportes</button>
-                </div>
-
-                <!-- Estadísticas Generales -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-title">📄 Total Documentos</div>
-                        <div class="stat-number" id="totalDocs">-</div>
-                        <div class="stat-subtitle">En el sistema</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">📈 Este Mes</div>
-                        <div class="stat-number" id="docsMes">-</div>
-                        <div class="stat-subtitle">Nuevos documentos</div>
-                    </div>
-                    <div class="stat-card ocr-stats">
-                        <div class="stat-title">🔍 Procesados OCR</div>
-                        <div class="stat-number" id="docsOCR">-</div>
-                        <div class="stat-subtitle">Con análisis OCR</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">🏷️ Palabras Clave</div>
-                        <div class="stat-number" id="totalKeywords">-</div>
-                        <div class="stat-subtitle">Identificadas</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-title">🎯 Procesados NLP</div>
-                        <div class="stat-number" id="docsConNLP">-</div>
-                        <div class="stat-subtitle">Con análisis completo</div>
-                    </div>
-                    <div class="stat-card ocr-stats">
-                        <div class="stat-title">📊 Calidad OCR</div>
-                        <div class="stat-number" id="calidadPromedio">-</div>
-                        <div class="stat-subtitle">Score promedio</div>
-                    </div>
-                </div>
-
-                <!-- Análisis de Calidad OCR -->
-                <div class="ocr-quality">
-                    <h3>🔍 Análisis de Calidad de Procesamiento OCR</h3>
-                    <div id="ocrQualityContent">
-                        <div class="loading">Analizando calidad OCR...</div>
-                    </div>
-                </div>
+            <main class="dashboard-grid">
                 
-                <!-- Distribución por Comisiones -->
-                <div class="chart-container">
-                    <h3>🏛️ Distribución por Comisiones</h3>
-                    <div class="chart-wrapper">
-                        <canvas id="comisionesChart"></canvas>
+                <aside class="sidebar-column">
+                    <div class="report-card">
+                        <h3>Estadísticas Clave</h3>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-title">Total Docs</div>
+                                <div class="stat-number" id="totalDocs">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-title">Este Mes</div>
+                                <div class="stat-number" id="docsMes">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-title">Procesados NLP</div>
+                                <div class="stat-number" id="docsConNLP">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-title">Procesados OCR</div>
+                                <div class="stat-number" id="docsOCR">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-title">Calidad OCR</div>
+                                <div class="stat-number" id="calidadPromedio">-</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-title">Palabras Clave</div>
+                                <div class="stat-number" id="totalKeywords">-</div>
+                            </div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Análisis NLP -->
-                <div class="nlp-analysis">
-                    <h3>🧠 Análisis de Procesamiento de Lenguaje Natural</h3>
+                    <div class="report-card">
+                        <h3>🔍 Calidad OCR</h3>
+                        <div id="ocrQualityContent">
+                            <div class="loading">Cargando...</div>
+                        </div>
+                    </div>
+                </aside>
+
+                <div class="main-content-column">
+                    <div class="welcome-card">
+                        <h1>📊 Reportes y Análisis</h1>
+                        <p>Visión general del procesamiento inteligente de documentos del ICU.</p>
+                        <button class="refresh-btn" onclick="loadAllReports()">🔄 Actualizar Todo</button>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="report-card">
+                            <h3>🏛️ Docs por Comisión</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="comisionesChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <h3>🗓️ Documentos por Mes</h3>
+                            <div class="chart-wrapper">
+                                <canvas id="temporalChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="report-card">
+                        <h3>🧠 Análisis de Contenido (NLP)</h3>
+                        <div id="nlpContent">
+                            <div class="loading">Cargando análisis...</div>
+                        </div>
+                    </div>
                     
-                    <div id="nlpContent">
-                        <div class="loading">Cargando análisis NLP...</div>
+                    <div class="report-card">
+                        <h3>📋 Documentos Recientes</h3>
+                        <div id="recentDocs">
+                            <div class="loading">Cargando...</div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Documentos Recientes -->
-                <div class="recent-docs">
-                    <h3>📋 Documentos Recientes con Análisis</h3>
-                    <div id="recentDocs">
-                        <div class="loading">Cargando documentos recientes...</div>
-                    </div>
-                </div>
-            </div>
+            </main>
 
             <script>
                 let temporalChart = null;
@@ -658,133 +689,172 @@ class ReportController {
 
                 // Mostrar análisis NLP
                 function displayNLPAnalysis(data) {
-                    let html = '';
-                    
-                    // Palabras clave más frecuentes
-                    if (data.palabras_frecuentes && data.palabras_frecuentes.length > 0) {
-                        html += \`
-                            <h4>🏷️ Palabras Clave Más Frecuentes</h4>
-                            <div class="keyword-cloud">
-                                \${data.palabras_frecuentes.map(keyword => 
-                                    \`<span class="keyword-item">\${keyword.palabra} (\${keyword.frecuencia})</span>\`
-                                ).join('')}
-                            </div>
-                        \`;
-                    }
-                    
-                    // Análisis de temas
-                    if (data.temas_populares && data.temas_populares.length > 0) {
-                        html += \`
-                            <h4>📊 Temas Más Frecuentes</h4>
-                            <div class="topic-analysis">
-                                \${data.temas_populares.map(tema => \`
-                                    <div class="topic-card">
-                                        <h5>\${tema.tema}</h5>
-                                        <p>Documentos: \${tema.frecuencia}</p>
-                                        <small>Palabras relacionadas: \${tema.palabras_ejemplo || 'N/A'}</small>
-                                    </div>
-                                \`).join('')}
-                            </div>
-                        \`;
-                    }
-                    
-                    // Estadísticas de sentimientos
-                    if (data.analisis_sentimientos) {
-                        html += \`
-                            <h4>😊 Análisis de Sentimientos</h4>
-                            <div style="display: flex; gap: 2rem; flex-wrap: wrap;">
-                                <div>Positivos: <strong>\${data.analisis_sentimientos.positivos || 0}</strong></div>
-                                <div>Neutrales: <strong>\${data.analisis_sentimientos.neutrales || 0}</strong></div>
-                                <div>Negativos: <strong>\${data.analisis_sentimientos.negativos || 0}</strong></div>
-                            </div>
-                        \`;
-                    }
-                    
-                    // Complejidad promedio
-                    if (data.complejidad_promedio) {
-                        html += \`
-                            <h4>📈 Complejidad Promedio de Documentos</h4>
-                            <div style="background: #e8f4fd; padding: 1rem; border-radius: 4px;">
-                                <p>Score de complejidad: <strong>\${data.complejidad_promedio.toFixed(2)}/10</strong></p>
-                                <small>Basado en longitud de oraciones y vocabulario utilizado</small>
-                            </div>
-                        \`;
-                    }
-                    
-                    // Información específica de OCR
-                    if (data.estadisticas_ocr) {
-                        html += \`
-                            <h4>🔍 Estadísticas de Procesamiento OCR</h4>
-                            <div style="background: #e8f5e8; padding: 1rem; border-radius: 4px;">
-                                <p>Documentos procesados con OCR: <strong>\${data.estadisticas_ocr.documentos_ocr}</strong></p>
-                                <p>Calidad promedio de extracción: <strong>\${data.estadisticas_ocr.calidad_promedio}%</strong></p>
-                                <p>Páginas totales procesadas: <strong>\${data.estadisticas_ocr.paginas_totales}</strong></p>
-                            </div>
-                        \`;
-                    }
-                    
-                    if (!html) {
-                        html = '<div class="error">No hay suficientes datos de análisis NLP disponibles. Asegúrese de que se hayan subido documentos y procesado correctamente.</div>';
-                    }
-                    
-                    document.getElementById('nlpContent').innerHTML = html;
-                }
+                      let html = '';
+                      
+                      // Contenedor principal con grid para un diseño compacto
+                      html += '<div class="nlp-grid-compact">';
 
-                // Mostrar documentos recientes
+                      // Columna 1: Palabras Clave y Temas
+                      html += '<div>';
+                      if (data.palabras_frecuentes && data.palabras_frecuentes.length > 0) {
+                          html += \`
+                              <h4>🏷️ Palabras Clave Frecuentes</h4>
+                              <div class="keyword-cloud">
+                                  \${data.palabras_frecuentes.slice(0, 10).map(keyword => // Limitar a 10 para ser compacto
+                                      \`<span class="keyword-item">\${keyword.palabra} (\${keyword.frecuencia})</span>\`
+                                  ).join('')}
+                              </div>
+                          \`;
+                      }
+                      
+                      if (data.temas_populares && data.temas_populares.length > 0) {
+                          html += \`
+                              <h4 class="mt-2">📊 Temas Populares</h4>
+                              <div class="topic-list-compact">
+                                  \${data.temas_populares.slice(0, 5).map(tema => \`
+                                      <div class="topic-item">
+                                          <strong>\${tema.tema}</strong>
+                                          <span>(\${tema.frecuencia} docs)</span>
+                                      </div>
+                                  \`).join('')}
+                              </div>
+                          \`;
+                      }
+                      html += '</div>';
+
+                      // Columna 2: Estadísticas de Complejidad y OCR
+                      html += '<div>';
+                      if (data.complejidad_promedio) {
+                          html += \`
+                              <h4>📈 Complejidad Promedio</h4>
+                              <div class="stat-card-compact">
+                                  <div class="stat-number-compact">\${data.complejidad_promedio.toFixed(2)} / 10</div>
+                                  <div class="stat-title-compact">Score de complejidad</div>
+                              </div>
+                          \`;
+                      }
+
+                      if (data.estadisticas_ocr) {
+                          html += \`
+                              <h4 class="mt-2">🔍 Estadísticas OCR</h4>
+                              <div class="stat-card-compact">
+                                  <div class="stat-number-compact">\${data.estadisticas_ocr.documentos_ocr}</div>
+                                  <div class="stat-title-compact">Documentos con OCR</div>
+                              </div>
+                              <div class="stat-card-compact">
+                                  <div class="stat-number-compact">\${data.estadisticas_ocr.calidad_promedio}%</div>
+                                  <div class="stat-title-compact">Calidad de extracción</div>
+                              </div>
+                          \`;
+                      }
+                      html += '</div>';
+                      
+                      html += '</div>'; // Cierre de nlp-grid-compact
+
+                      if (!data.palabras_frecuentes || data.palabras_frecuentes.length === 0) {
+                          html = '<div class="error">No hay suficientes datos de análisis NLP disponibles.</div>';
+                      }
+                      
+                      document.getElementById('nlpContent').innerHTML = html;
+}
                 function displayRecentDocuments(data) {
-                    if (!data || data.length === 0) {
-                        document.getElementById('recentDocs').innerHTML = '<p>No hay documentos recientes disponibles.</p>';
-                        return;
-                    }
-                    
-                    const html = data.map(doc => {
-                        const fecha = new Date(doc.created_at).toLocaleDateString();
-                        const sentiment = parseFloat(doc.sentiment) || 0;
-                        let sentimentClass = 'sentiment-neutral';
-                        if (sentiment > 0.1) sentimentClass = 'sentiment-positive';
-                        else if (sentiment < -0.1) sentimentClass = 'sentiment-negative';
-                        
-                        // Determinar indicador de procesamiento
-                        let processingIndicator = '';
-                        if (doc.metadatos_procesamiento) {
-                            try {
-                                const metadatos = typeof doc.metadatos_procesamiento === 'string' 
-                                    ? JSON.parse(doc.metadatos_procesamiento) 
-                                    : doc.metadatos_procesamiento;
-                                    
-                                if (metadatos.ocr_aplicado) {
-                                    processingIndicator = '<span class="ocr-indicator ocr-applied">OCR</span>';
-                                } else if (metadatos.metodo_extraccion === 'nativo') {
-                                    processingIndicator = '<span class="ocr-indicator ocr-native">NATIVO</span>';
-                                }
-                            } catch (e) {
-                                // Ignorar errores de parsing
-                            }
+                        if (!data || data.length === 0) {
+                            document.getElementById('recentDocs').innerHTML = '<p>No hay documentos recientes disponibles.</p>';
+                            return;
                         }
                         
-                        return \`
-                            <div class="doc-item">
-                                <div>
-                                    <h5>\${doc.titulo} \${processingIndicator}</h5>
-                                    <p>
-                                        <span class="sentiment-indicator \${sentimentClass}"></span>
-                                        <strong>Remitente:</strong> \${doc.remitente || 'N/A'} | 
-                                        <strong>Fecha:</strong> \${fecha} |
-                                        <strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}
-                                    </p>
-                                    <small>Palabras clave: \${doc.palabras_preview || 'Procesando...'}</small>
+                        const html = data.map(doc => {
+                            // 1. LIMPIEZA DEL TÍTULO:
+                            //    Elimina la palabra "OCR" del final del título para mostrarlo limpio.
+                            const cleanTitle = doc.titulo.replace(/\sOCR$/i, '').trim();
+                            const fecha = new Date(doc.created_at).toLocaleDateString();
+                            
+                            let processingIndicator = '';
+                            if (doc.metadatos_procesamiento) {
+                                try {
+                                    const metadatos = typeof doc.metadatos_procesamiento === 'string' 
+                                        ? JSON.parse(doc.metadatos_procesamiento) 
+                                        : doc.metadatos_procesamiento;
+                                        
+                                    if (metadatos.ocr_aplicado) {
+                                        processingIndicator = '<span class="ocr-indicator ocr-applied">OCR</span>';
+                                    } else if (metadatos.metodo_extraccion === 'nativo') {
+                                        processingIndicator = '<span class="ocr-indicator ocr-native">NATIVO</span>';
+                                    }
+                                } catch (e) { /* Ignorar errores de parsing */ }
+                            }
+                            
+                            return \`
+                                <div class="doc-item">
+                                    <div>
+                                
+                                        <h5>\${cleanTitle} \${processingIndicator}</h5>
+                                        <p style="color: #6c757d; font-size: 0.9em;">
+                                            <strong>Remitente:</strong> \${doc.remitente || 'N/A'} | 
+                                            <strong>Fecha:</strong> \${fecha} |
+                                            <strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-info btn-sm" onclick="viewPdf('\${doc.id}', '\${cleanTitle}')">
+                                            Ver
+                                        </button>
+                                    </div>
                                 </div>
-                                <div>
-                                    <a href="/api/documentos/\${doc.id}/download" class="btn btn-info btn-sm" target="_blank">
-                                        📥 Ver
-                                    </a>
+                            \`;
+                        }).join('');
+                        
+                        document.getElementById('recentDocs').innerHTML = html;
+                    }
+
+              function viewPdf(documentId, documentTitle) {
+                // Primero, verifica si el modal ya existe en la página. Si no, lo crea.
+                if (!document.getElementById('pdfModal')) {
+                    const modalHtml = \`
+                        <div id="pdfModal" class="modal">
+                            <div class="modal-content-pdf">
+                                <div class="modal-header">
+                                    <h2 id="pdfModalTitle">Previsualización</h2>
+                                    <span class="close-pdf-modal">&times;</span>
                                 </div>
+                                <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
                             </div>
-                        \`;
-                    }).join('');
+                        </div>\`;
+                    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+                    // Añade el evento de cierre al nuevo botón
+                    document.querySelector('.close-pdf-modal').addEventListener('click', closePdfModal);
                     
-                    document.getElementById('recentDocs').innerHTML = html;
+                    // Cierra el modal si se hace clic fuera de él
+                    window.addEventListener('click', (event) => {
+                        if (event.target == document.getElementById('pdfModal')) {
+                            closePdfModal();
+                        }
+                    });
                 }
+
+                // Ahora que estamos seguros de que el modal existe, lo usamos.
+                const pdfModal = document.getElementById('pdfModal');
+                const pdfViewer = document.getElementById('pdfViewer');
+                const pdfModalTitle = document.getElementById('pdfModalTitle');
+
+                pdfModalTitle.textContent = documentTitle;
+                pdfViewer.src = \`/api/documentos/\${documentId}/preview\`;
+                pdfModal.style.display = 'block';
+            }
+
+            /**
+             * Cierra el modal de previsualización.
+             */
+            function closePdfModal() {
+                const pdfModal = document.getElementById('pdfModal');
+                const pdfViewer = document.getElementById('pdfViewer');
+                if (pdfModal) {
+                    pdfModal.style.display = 'none';
+                    pdfViewer.src = ''; // Limpiar el iframe para detener la carga del PDF
+                }
+            }
+
 
                 // Inicializar página
                 document.addEventListener('DOMContentLoaded', function() {

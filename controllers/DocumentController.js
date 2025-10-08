@@ -48,7 +48,27 @@ class DocumentController {
                 .action-buttons button, .action-buttons a { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 0.9em;}
                 .view-button { background-color: #007bff; color: white; border: none; }
                 .download-button { background-color: #28a745; color: white; border: none; }
-                
+                /* Estilo base para todas las insignias de categoría */
+                    .category-badge {
+                        color: white;
+                        padding: 4px 10px;
+                        border-radius: 12px;
+                        font-size: 0.8em;
+                        font-weight: 500;
+                        text-transform: capitalize; /* Pone la primera letra en mayúscula */
+                    }
+
+                    /* Colores específicos para cada categoría */
+                    .category-resolucion { background-color: #007BFF; } /* Azul */
+                    .category-reglamento { background-color: #6f42c1; } /* Morado */
+                    .category-informe { background-color: #fd7e14; }   /* Naranja */
+                    .category-general { background-color: #6c757d; }   /* Gris */
+                    .delete-button {
+                        background-color: #dc3545;
+                        color: white;
+                        border: none;
+                                  }
+
                 /* Notificacion toast */
                     .toast-notification {
                         position: fixed;
@@ -127,11 +147,18 @@ class DocumentController {
                     <h2>Documentos del Sistema</h2>
                     <div class="search-filter-controls">
                         <input type="text" id="document-search" placeholder="Buscar documentos...">
-                        <select id="document-comision-filter">
+                         <select id="document-comision-filter">
                             <option value="">Todas las comisiones</option>
                             ${comisiones.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('')}
-                        </select>
-                        <button class="cta-button" onclick="loadDocuments()">Actualizar</button>
+                         </select>
+                         <select id="document-category-filter">
+                              <option value="">Todas las categorías</option>
+                              <option value="Reglamento">Reglamento</option>
+                              <option value="Resolucion">Resolución</option>
+                              <option value="Informe de comision">Informe</option>
+                              <option value="General">General</option>
+                          </select>
+                        <button class="cta-button" onclick="loadDocuments()">Buscar</button>
                     </div>
 
                     <div class="document-table-container">
@@ -141,6 +168,7 @@ class DocumentController {
                                     <th>Título</th>
                                     <th>Remitente</th>
                                     <th>Comisión</th>
+                                    <th>Categoría</th>
                                     <th>Fecha</th>
                                     <th>Subido por</th>
                                     <th>Acciones</th>
@@ -190,6 +218,13 @@ class DocumentController {
                         currentPage = 1; // Resetear a la primera página en cada cambio de filtro
                         loadDocuments();
                     });
+
+                    // Event listener para el filtro de categoría
+                      document.getElementById('document-category-filter').addEventListener('change', () => {
+                          currentPage = 1;
+                          loadDocuments();
+                      });
+
                     document.getElementById('prevPage').addEventListener('click', () => {
                         if (currentPage > 1) {
                             currentPage--;
@@ -207,11 +242,13 @@ class DocumentController {
                 async function loadDocuments() {
                     const searchTerm = document.getElementById('document-search').value;
                     const comisionFilter = document.getElementById('document-comision-filter').value;
+                    const categoryFilter = document.getElementById('document-category-filter').value;
                     const queryString = new URLSearchParams({
                         page: currentPage,
                         limit: documentsPerPage,
                         search: searchTerm,
-                        comision_id: comisionFilter
+                        comision_id: comisionFilter,
+                        categoria: categoryFilter 
                     }).toString();
 
                     console.log('Actualizando lista de documentos con los parámetros:', queryString);
@@ -227,15 +264,21 @@ class DocumentController {
                             data.documents.forEach(doc => {
                                 const row = documentListBody.insertRow();
 
+                                //Cada categoria con su color distintivo
+                                const categoria = doc.categoria || 'General';
+                                const categoriaClass = 'category-' + categoria.toLowerCase().split(' ')[0];
+
                                 row.innerHTML = \`
                                     <td>\${doc.titulo}</td>
                                     <td>\${doc.remitente}</td>
                                     <td>\${doc.comision_nombre || 'N/A'}</td>
+                                     <td><span class="category-badge \${categoriaClass}">\${categoria}</span></td>
                                     <td>\${new Date(doc.fecha_subida).toLocaleDateString()}</td>
                                     <td>\${doc.subido_por || 'Desconocido'}</td>
                                     <td class="action-buttons">
                                         <button class="view-button" onclick="viewPdf('\${doc.id}', '\${doc.titulo}')">Ver</button>
                                         <a href="/api/documentos/\${doc.id}/download" class="download-button">Descargar</a>
+                                        <button class="delete-button" onclick="deleteDocument('\${doc.id}', '\${doc.titulo}')">Borrar</button>
                                     </td>
                                 \`;
                             });
@@ -317,7 +360,7 @@ class DocumentController {
                     const pdfModalTitle = document.getElementById('pdfModalTitle');
 
                     pdfModalTitle.textContent = documentTitle;
-                    pdfViewer.src = \`/api/documentos/\${documentId}/preview\`; // La misma ruta de descarga funciona para previsualizar
+                    pdfViewer.src = \`/api/documentos/\${documentId}/preview\`;
                     pdfModal.style.display = 'block';
                 }
 
@@ -400,6 +443,30 @@ class DocumentController {
                           loadDocuments();
                       }, 15000);
                   }
+
+                  async function deleteDocument(id, titulo) {
+                          if (!confirm(\`¿Estás seguro de que quieres eliminar el documento "\${titulo}"? Esta acción no se puede deshacer.\`)) {
+                              return;
+                          }
+
+                          try {
+                              const response = await fetch(\`/api/documentos/\${id}\`, {
+                                  method: 'DELETE',
+                              });
+
+                              const result = await response.json();
+
+                              if (response.ok && result.success) {
+                                  showAlert('Documento eliminado con éxito', 'success');
+                                  loadDocuments(); // Recargar la lista
+                              } else {
+                                  showAlert(result.message || 'No se pudo eliminar el documento', 'error');
+                              }
+                          } catch (error) {
+                              console.error('Error al eliminar documento:', error);
+                              showAlert('Error de red al intentar eliminar.', 'error');
+                          }
+                      }
             </script>
       </body>
       </html>
@@ -413,7 +480,7 @@ class DocumentController {
   // Obtener lista de documentos
 static async getDocumentos(req, res) {
   try {
-      const { page = 1, limit = 15, search = '', comision_id = '' } = req.query; // Añadimos comision_id como filtro
+      const { page = 1, limit = 15, search = '', comision_id = '', categoria = '' } = req.query; // Añadimos comision_id como filtro
       const offset = (parseInt(page) - 1) * parseInt(limit);
       
       let queryText = `
@@ -421,6 +488,7 @@ static async getDocumentos(req, res) {
           d.id,
           d.titulo,
           d.remitente,
+          d.categoria,
           c.nombre AS comision_nombre,
           d.fecha_ingreso AS fecha_subida,
           u.nombre AS subido_por,
@@ -449,6 +517,14 @@ static async getDocumentos(req, res) {
         queryParams.push(comision_id);
         paramIndex++;
       }
+
+      if (categoria) { // Filtro por categoria
+      const categoryClause = ` AND d.categoria = $${paramIndex}`;
+      queryText += categoryClause;
+      countQuery += categoryClause;
+      queryParams.push(categoria);
+      paramIndex++;
+    }
       
       const totalDocumentsResult = await query(countQuery, queryParams);
       const totalDocuments = parseInt(totalDocumentsResult.rows[0].count);
@@ -479,6 +555,40 @@ static async getDocumentos(req, res) {
     }
   }
 
+  static async deleteDocumento(req, res) {
+    const { id } = req.params;
+    const client = await getClient();
+    try {
+        await client.query('BEGIN');
+
+        // 1. Obtener la ruta del archivo antes de borrar el registro
+        const docResult = await client.query('SELECT archivo_path FROM documentos WHERE id = $1', [id]);
+        if (docResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Documento no encontrado.' });
+        }
+        const filePath = docResult.rows[0].archivo_path;
+
+        // 2. Borrar el registro de la base de datos
+        await client.query('DELETE FROM documentos WHERE id = $1', [id]);
+
+        // 3. Borrar el archivo físico del servidor
+        if (filePath) {
+            // Usamos el método de limpieza que ya tienes
+            DocumentController.limpiarArchivo(filePath);
+        }
+
+        await client.query('COMMIT');
+        res.status(200).json({ success: true, message: 'Documento eliminado correctamente.' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error al eliminar documento:', error);
+        res.status(500).json({ success: false, message: 'Error interno al eliminar el documento.' });
+    } finally {
+        client.release();
+    }
+}
+
 
   // Crear directorio temporal si no existe
   static ensureTempDir() {
@@ -488,6 +598,30 @@ static async getDocumentos(req, res) {
       console.log('📁 Directorio temp creado');
     }
   }
+
+  /**
+  Extrae citas específicas de reglamentos y resoluciones del texto.
+   * Prioriza formatos en mayúsculas como "VICERRECTORADO N° 598/2025".
+   * @param {string} texto - El contenido completo del documento.
+   * @returns {string[]} Un array de citas únicas encontradas.
+   */
+  static extractDocumentCitations(texto) {
+      const CITE_REGEX = /[A-ZÁÉÍÓÚÑ\s.,-]{5,}\s*N°\s*[\d\s-/]+(?:\d{4})?/g;
+      const ARTICLE_REGEX = /Estatuto Orgánico de la U\.A\.G\.R\.M\.?,?\s*art(?:ículo)?\.?\s*\d+/gi;
+      const REGULATION_REGEX = /Reglamento\s+d(?:el|e\s+la)\s+[\w\sÁÉÍÓÚáéíóúñÑ]+/gi;
+      
+      const citations = texto.match(CITE_REGEX) || [];
+      const articles = texto.match(ARTICLE_REGEX) || [];
+      const regulations = texto.match(REGULATION_REGEX) || [];
+
+      // Limpiar y unificar resultados
+      const allMatches = [...citations, ...articles, ...regulations];
+      const uniqueMatches = [...new Set(allMatches.map(m => m.trim().replace(/\s+/g, ' ')))];
+      
+      console.log(`🔍 Citas encontradas: ${uniqueMatches.length}`);
+      return uniqueMatches;
+  }
+
 
   // Función principal para procesar archivos con OCR
   static async procesarArchivoConOCR(archivoPath, tipoArchivo) {
@@ -800,6 +934,7 @@ static async getDocumentos(req, res) {
             throw new Error('El título es obligatorio');
         }
 
+        console.log(`📤 Procesando documento: ${titulo}`);
         const resultadoProcesamiento = await DocumentController.procesarArchivoConOCR(archivo.path, archivo.mimetype);
         const { texto: contenidoTexto, ocr_aplicado: ocrAplicado, metadatos: metadatosProcesamiento } = resultadoProcesamiento;
         
@@ -1011,12 +1146,13 @@ static async getDocumentos(req, res) {
         longitud_oraciones: texto.split(/[.!?]+/).filter(s => s.trim().length > 0).length,
         sentiment: sentimentAnalyzer.getSentiment(stemmedTokens), 
         complejidad: this.calculateComplexity(texto),
+        citas_reglamentos: this.extractDocumentCitations(texto),
         temas_detectados: await this.detectTopics(texto),
         procesado_con_ocr: true,
         calidad_texto: this.evaluarCalidadTexto(texto)
       };
 
-    //   console.log(`🧠 Análisis NLP completado - Sentiment: ${analisis.sentiment}, Complejidad: ${analisis.complejidad.score}`);
+    console.log(`🧠 Análisis NLP completado. Citas encontradas: ${analisis.citas_reglamentos.length}`);
       return analisis;
       
     } catch (error) {
@@ -1240,73 +1376,33 @@ static async getDocumentos(req, res) {
   }
 
   static async sugerirReglamentos(idsDeDocumentosDeSesion) {
-        console.log(`🧠 Iniciando sugerencia de reglamentos para ${idsDeDocumentosDeSesion.length} documento(s).`);
         if (!idsDeDocumentosDeSesion || idsDeDocumentosDeSesion.length === 0) {
-            console.log('⚠️ No hay documentos de sesión para analizar, no se sugieren reglamentos.');
-            return []; // No hay documentos, no hay sugerencias
+            return [];
         }
-
         try {
-            // 1. OBTENER EL CONTENIDO COMBINADO DE LOS DOCUMENTOS DE LA SESIÓN
             const params = idsDeDocumentosDeSesion.map((_, i) => `$${i + 1}`).join(',');
             const documentosSesionResult = await query(
-                `SELECT contenido_texto, palabras_clave FROM documentos WHERE id IN (${params})`,
+                `SELECT analisis_nlp FROM documentos WHERE id IN (${params})`,
                 idsDeDocumentosDeSesion
             );
 
-            if (documentosSesionResult.rows.length === 0) {
-                return [];
-            }
-
-            // Unimos todo el texto y palabras clave en un solo "perfil de contenido" para la sesión
-            const perfilContenidoSesion = documentosSesionResult.rows.map(d => d.contenido_texto).join(' \n ');
-            const perfilKeywordsSesion = [...new Set(documentosSesionResult.rows.flatMap(d => d.palabras_clave || []))];
-
-            console.log(`📝 Perfil de sesión creado con ${perfilKeywordsSesion.length} palabras clave únicas.`);
-
-            // 2. OBTENER TODOS LOS REGLAMENTOS DE LA BASE DE DATOS
-            const reglamentosResult = await query(
-                `SELECT id, titulo, contenido_texto, palabras_clave FROM documentos WHERE categoria = 'Reglamento'`
-            );
-            const todosLosReglamentos = reglamentosResult.rows;
-            console.log(`📚 Encontrados ${todosLosReglamentos.length} reglamentos en la base de conocimiento.`);
-
-            // 3. CALCULAR SIMILITUD Y ENCONTRAR LOS MÁS RELEVANTES
-            const sugerencias = [];
-            for (const reglamento of todosLosReglamentos) {
-                // No sugerir un reglamento si ya está incluido en los documentos de la sesión
-                if (idsDeDocumentosDeSesion.includes(reglamento.id)) {
-                    continue;
+            if (documentosSesionResult.rows.length === 0) { return []; }
+            
+            const citasDeLaSesion = new Set();
+            documentosSesionResult.rows.forEach(doc => {
+                const analisis = doc.analisis_nlp || {};
+                if (analisis.citas_reglamentos && Array.isArray(analisis.citas_reglamentos)) {
+                    analisis.citas_reglamentos.forEach(cita => citasDeLaSesion.add(cita));
                 }
+            });
 
-                // Usamos la lógica de similitud que ya tienes!
-                const similitud = this.calculateSimilarity(
-                    perfilKeywordsSesion,
-                    reglamento.palabras_clave || [],
-                    perfilContenidoSesion,
-                    reglamento.contenido_texto || ''
-                );
-
-                if (similitud > 0.05) { // Umbral de similitud del 50% (ajustable)
-                    sugerencias.push({
-                        id: reglamento.id,
-                        titulo: reglamento.titulo,
-                        similitud: similitud
-                    });
-                }
-            }
-
-            // 4. DEVOLVER LAS MEJORES SUGERENCIAS
-            const topSugerencias = sugerencias
-                .sort((a, b) => b.similitud - a.similitud)
-                .slice(0, 5); // Devolvemos hasta 5 sugerencias
-
-            console.log(`✅ Sugerencias generadas: ${topSugerencias.length}`);
-            return topSugerencias.map(s => s.titulo); // Devolvemos solo los títulos
+            const sugerenciasDirectas = [...citasDeLaSesion];
+            console.log(`✅ Sugerencias directas por citas: ${sugerenciasDirectas.length}`);
+            return sugerenciasDirectas;
 
         } catch (error) {
             console.error('❌ Error crítico al sugerir reglamentos:', error);
-            return ['Error al procesar sugerencias']; // Devolver un error manejable
+            return ['Error al procesar sugerencias'];
         }
     }
 
