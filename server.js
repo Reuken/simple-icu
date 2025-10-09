@@ -670,7 +670,7 @@ app.post('/api/sesion/update', requireAuth, requireRole(['administrativo', 'supe
         // [NUEVO] Lógica de sugerencia de reglamentos
         const idsDocumentosSeleccionados = documentos ? (Array.isArray(documentos) ? documentos : [documentos]).map(id => parseInt(id)) : [];
         const reglamentosSugeridos = await DocumentController.sugerirReglamentos(idsDocumentosSeleccionados);
-        const reglamentosString = reglamentosSugeridos.join('|');
+        const reglamentosString = reglamentosSugeridos.map(r => r.texto).join('|')
         
         let currentSesionId = sesion_id;
 
@@ -760,7 +760,19 @@ app.get('/mi_espacio', requireAuth, requireRole(['consejero', 'superadmin']), as
         const sesionResult = await pool.query(sesionQuery);
         
         const proximaSesion = sesionResult.rows[0] || {};
-        res.send(generateMiEspacioPage(usuario, proximaSesion));
+
+        const idsDeDocumentos = (proximaSesion.documentos || []).map(doc => doc.id);
+
+        // 3. Llamar a la función para obtener las sugerencias procesadas
+        const sugerenciasProcesadas = await DocumentController.sugerirReglamentos(idsDeDocumentos);
+        
+        // 4. Reemplazar la propiedad 'reglamentos' con el resultado enriquecido
+        proximaSesion.reglamentos = sugerenciasProcesadas;
+
+        const todosLosReglamentos = await DocumentController.getTodosLosReglamentos();
+        
+        // 3. Enviar todos los datos a la página
+        res.send(generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos));
 
     } catch (error) {
         console.error('Error al cargar Mi Espacio ICU:', error);
@@ -1095,7 +1107,7 @@ function generateFacultadesPage(facultades) {
     </html>
   `;
 }
-function generateMiEspacioPage(usuario, proximaSesion) {
+function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos) {
   const { nombre, comisiones, descripcion_rol } = usuario;
   const comisionesHtml = comisiones.map(c => `<span class="comision-tag">${c.nombre}</span>`).join(' ') || '<span class="comision-tag none">Ninguna asignada</span>';
 
@@ -1107,8 +1119,40 @@ function generateMiEspacioPage(usuario, proximaSesion) {
       hora: proximaSesion.hora || 'No definida',
       temas: proximaSesion.temas ? proximaSesion.temas.split('|') : ['No hay temas definidos'],
       documentos: proximaSesion.documentos || [],
-      reglamentos: proximaSesion.reglamentos ? proximaSesion.reglamentos.split('|') : ['Sin sugerencias']
+      reglamentos: proximaSesion.reglamentos || []
   };
+
+  let reglamentosHtml = '<li>Sin sugerencias</li>';
+
+  if (Array.isArray(sesionData.reglamentos) && sesionData.reglamentos.length > 0) {
+      reglamentosHtml = sesionData.reglamentos.map(r => {
+          if (r.esEnlace) {
+              return `
+                <li class="suggestion-item">
+                    <span>${r.texto}</span>
+                    <button class="btn btn-info btn-sm" onclick="viewPdf('${r.documento_id}', '${r.documento_titulo}')">Ver Documento</button>
+                </li>`;
+          } else {
+              return `<li class="suggestion-item text-only"><span>${r.texto}</span></li>`;
+          }
+      }).join('');
+  } 
+  // 2. Si no es un array, verificamos si es un string (el formato antiguo)
+  else if (typeof sesionData.reglamentos === 'string' && sesionData.reglamentos) {
+      console.warn("Advertencia: 'reglamentos' se está recibiendo como string, no como array. Mostrando en formato antiguo.");
+      reglamentosHtml = sesionData.reglamentos.split('|').map(r => `<li>${r}</li>`).join('');
+  }
+
+  const todosReglamentosHtml = todosLosReglamentos && todosLosReglamentos.length > 0
+    ? todosLosReglamentos.map(reg => `
+        <li class="sidebar-list-item">
+            <span>${reg.titulo}</span>
+            <button class="btn btn-info-dark btn-sm" onclick="viewPdf('${reg.id}', '${reg.titulo}')">Ver</button>
+        </li>
+      `).join('')
+    : '<li>No hay reglamentos disponibles.</li>';
+
+
 
   return `
     <!DOCTYPE html>
@@ -1235,6 +1279,71 @@ function generateMiEspacioPage(usuario, proximaSesion) {
                 text-decoration: none;
                 font-weight: 500;
             }
+
+            /* --- Estilos para las listas de sugerencias (ligeramente modificados) --- */
+            .suggestion-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; }
+            .suggestion-item.text-only { justify-content: flex-start; }
+            .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 0.9rem; }
+            .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+            .btn-info { background-color: rgba(255, 255, 255, 0.2); color: white; }
+            .btn-info:hover { background-color: rgba(255, 255, 255, 0.3); }
+
+            /* --- 3. NUEVO: Estilos para la nueva tarjeta y lista de reglamentos --- */
+            .sidebar-card {
+                background-color: #ffffff;
+                border-radius: 12px;
+                padding: 2rem;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+                border: 1px solid #eef;
+            }
+            .sidebar-card h3 {
+                font-size: 1.5rem; font-weight: 500; color: #333;
+                margin-top: 0; margin-bottom: 1.5rem;
+                border-bottom: 2px solid #007BFF;
+                padding-bottom: 0.5rem; display: inline-block;
+            }
+            .sidebar-card ul {
+                list-style-type: none; padding: 0;
+                max-height: 400px; /* Altura máxima con scroll */
+                overflow-y: auto;
+            }
+            .sidebar-list-item {
+                background-color: transparent !important; /* Anular estilo de .session-card li */
+                color: #555;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.75rem 0.5rem !important;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            .sidebar-list-item:last-child { border-bottom: none; }
+            .btn-info-dark {
+                background-color: #e3f2fd; /* Azul claro */
+                color: #1565c0; /* Azul oscuro */
+            }
+            
+            
+            /* --- Estilos del Modal para previsualizar --- */
+            .modal { display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.85); padding: 20px; }
+            .modal-content-pdf { background-color: #444; margin: 2% auto; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; width: 95%; max-width: 1200px; height: 90vh; max-height: 900px; }
+            .modal-header { padding: 10px 20px; background-color: #333; color: white; display: flex; justify-content: space-between; align-items: center; }
+            .modal-header h2 { margin: 0; font-size: 1.1em; }
+            .close-pdf-modal { color: #aaa; font-size: 30px; font-weight: bold; cursor: pointer; }
+            .close-pdf-modal:hover { color: white; }
+            .pdf-iframe { flex-grow: 1; width: 100%; height: 100%; border: none; }
+
+            /* --- NUEVOS ESTILOS AÑADIDOS --- */
+            .suggestion-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 0.75rem 1rem;
+            }
+            .suggestion-item.text-only { justify-content: flex-start; }
+            .btn { /* ... estilos de botón ... */ }
+            .btn-info { background-color: rgba(255, 255, 255, 0.2); color: white; }
+            .btn-info:hover { background-color: rgba(255, 255, 255, 0.3); }
+            .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
         </style>
     </head>
     <body>
@@ -1254,6 +1363,13 @@ function generateMiEspacioPage(usuario, proximaSesion) {
                 <p><strong>Rol:</strong> ${descripcion_rol}</p>
                 <p><strong>Comisiones Asignadas:</strong></p>
                 <div>${comisionesHtml}</div>
+                
+                <div class="sidebar-card" style="margin-top: 2rem;">
+                    <h3>Reglamentos Disponibles</h3>
+                    <ul>
+                        ${todosReglamentosHtml}
+                    </ul>
+                </div>
             </div>
 
             <div class="session-card">
@@ -1279,14 +1395,34 @@ function generateMiEspacioPage(usuario, proximaSesion) {
 
                 <h4>Temas a Tratar</h4>
                 <ul>${sesionData.temas.map(t => `<li>${t}</li>`).join('')}</ul>
-                
+
                 <h4>Documentos para la Sesión</h4>
-                <ul>${sesionData.documentos.length > 0 ? sesionData.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download">${d.titulo}</a></li>`).join('') : '<li>No hay documentos adjuntos.</li>'}</ul>
-                
-                <h4>Reglamentos a Revisar</h4>
-                <ul>${sesionData.reglamentos.map(r => `<li>${r}</li>`).join('')}</ul>
+                <ul>${sesionData.documentos.length > 0 ? sesionData.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download" target="_blank">${d.titulo}</a></li>`).join('') : '<li>No hay documentos adjuntos.</li>'}</ul>
+
+                <h4>Reglamentos y Resoluciones a Revisar</h4>
+                <ul>${reglamentosHtml}</ul>
             </div>
         </main>
+
+            <script>
+            function viewPdf(docId, docTitle) {
+                      const modal = document.getElementById('pdfModal');
+                      const viewer = document.getElementById('pdfViewer');
+                      document.getElementById('pdfModalTitle').textContent = docTitle;
+                      viewer.src = \`/api/documentos/\${docId}/preview\`;
+                      modal.style.display = 'block';
+                  }
+                  function closePdfModal() {
+                      const modal = document.getElementById('pdfModal');
+                      document.getElementById('pdfViewer').src = '';
+                      modal.style.display = 'none';
+                  }
+                  window.onclick = function(event) {
+                      if (event.target == document.getElementById('pdfModal')) {
+                          closePdfModal();
+                      }
+                  }
+            </script>
     </body>
     </html>
   `;

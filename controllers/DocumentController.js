@@ -589,6 +589,25 @@ static async getDocumentos(req, res) {
     }
 }
 
+static async getTodosLosReglamentos(req, res) {
+    try {
+        const result = await query(
+            "SELECT id, titulo FROM documentos WHERE categoria = 'Reglamento' ORDER BY titulo ASC"
+        );
+        // Si se llama desde una API, devuelve JSON.
+        // Si no, simplemente devuelve los datos para uso interno.
+        if (res) {
+            return res.json(result.rows);
+        }
+        return result.rows;
+    } catch (error) {
+        console.error('Error al obtener todos los reglamentos:', error);
+        if (res) {
+            return res.status(500).json({ error: 'Error interno del servidor.' });
+        }
+        throw error;
+    }
+}
 
   // Crear directorio temporal si no existe
   static ensureTempDir() {
@@ -606,22 +625,93 @@ static async getDocumentos(req, res) {
    * @returns {string[]} Un array de citas únicas encontradas.
    */
   static extractDocumentCitations(texto) {
-      const CITE_REGEX = /[A-ZÁÉÍÓÚÑ\s.,-]{5,}\s*N°\s*[\d\s-/]+(?:\d{4})?/g;
-      const ARTICLE_REGEX = /Estatuto Orgánico de la U\.A\.G\.R\.M\.?,?\s*art(?:ículo)?\.?\s*\d+/gi;
-      const REGULATION_REGEX = /Reglamento\s+d(?:el|e\s+la)\s+[\w\sÁÉÍÓÚáéíóúñÑ]+/gi;
-      
-      const citations = texto.match(CITE_REGEX) || [];
-      const articles = texto.match(ARTICLE_REGEX) || [];
-      const regulations = texto.match(REGULATION_REGEX) || [];
+    // Expresiones Regulares refinadas
+    const REGEX_CITE_CON_NUMERO = /(?:Resolución|Oficio|Informe|Decanato|Consejo Facultativo)\s*[\w\s.]*?N[°º*]\s*[\d-\/]+/gi;
+    const REGEX_REGLAMENTO_TITULO = /(?:Reglamento|Estatuto Orgánico de la Universidad Autónoma Gabriel René Moreno|Estatuto Orgánico de la U\.A\.G\.R\.M\.)[\s\wÁÉÍÓÚáéíóúñÑ"'-]+/gi;
+    const REGEX_ARTICULO = /(?:Artículo|Art\.?|Inciso)\s*[\d\w°.,\s]+/gi;
 
-      // Limpiar y unificar resultados
-      const allMatches = [...citations, ...articles, ...regulations];
-      const uniqueMatches = [...new Set(allMatches.map(m => m.trim().replace(/\s+/g, ' ')))];
-      
-      console.log(`🔍 Citas encontradas: ${uniqueMatches.length}`);
-      return uniqueMatches;
-  }
+    let citasCandidatas = new Set();
+    const parrafos = texto.split(/[\n\r]{2,}/); // 1. Analizar por párrafo
 
+    parrafos.forEach(parrafo => {
+        const pLimpio = parrafo.replace(/[\n\r]/g, ' ').trim();
+
+        const regs = pLimpio.match(REGEX_REGLAMENTO_TITULO);
+        const arts = pLimpio.match(REGEX_ARTICULO);
+        const citasNum = pLimpio.match(REGEX_CITE_CON_NUMERO);
+
+        if (regs && arts) {
+            // 2. Asociar artículos solo si están en el mismo párrafo que un reglamento
+            const articulosUnicos = [...new Set(arts)];
+            citasCandidatas.add(`${regs[0].trim()} en su ${articulosUnicos.join(', ')}`);
+        } else if (regs) {
+            // Añadir reglamentos mencionados solos
+            regs.forEach(r => citasCandidatas.add(r.trim()));
+        }
+
+        if (citasNum) {
+            citasNum.forEach(c => citasCandidatas.add(c.trim()));
+        }
+    });
+
+    // --- 3. FILTRADO Y LIMPIEZA POST-PROCESAMIENTO ---
+    let listaFiltrada = Array.from(citasCandidatas)
+        .map(cita => cita.replace(/\s+/g, ' ').replace(/[.,]$/, '').trim()) // Limpiar espacios y puntuación final
+        .filter(cita => {
+            const lowerCita = cita.toLowerCase();
+            // Descartar frases procedurales o incompletas
+            if (lowerCita.includes('cuyo objetivo es que') ||
+                lowerCita.includes('establece que') ||
+                lowerCita.includes('fines consiguientes') ||
+                lowerCita.includes('vicerrectorado, dicaa')) {
+                return false;
+            }
+            // Descartar frases muy cortas que no sean citas con número
+            if (cita.length < 20 && !cita.match(/N[°º*]/)) {
+                return false;
+            }
+            return true;
+        })
+        // Corregir redundancias como "en su Artículo 72 en su Artículo 72"
+        .map(cita => {
+            const partes = cita.split(/ en su /gi);
+            if (partes.length > 1) {
+                const base = partes[0];
+                const articulos = [...new Set(partes.slice(1).join(', ').split(',').map(a => a.trim()))].join(', ');
+                return `${base} en su ${articulos}`;
+            }
+            return cita;
+        });
+
+    // --- 4. DESDUPLICACIÓN INTELIGENTE FINAL ---
+    // Prioriza las menciones que incluyen artículos sobre las que no.
+    const mapaFinal = new Map();
+    // Ordenar de la más larga (específica) a la más corta (general)
+    listaFiltrada.sort((a, b) => b.length - a.length);
+
+    listaFiltrada.forEach(cita => {
+        let esRedundante = false;
+        // Normalizamos la cita para buscar duplicados semánticos
+        const citaNormalizada = cita.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        for (const [key, value] of mapaFinal.entries()) {
+            // Si una cita ya guardada (que es más larga) contiene la versión simplificada
+            // de la cita actual, entonces la actual es redundante.
+            if (key.includes(citaNormalizada)) {
+                esRedundante = true;
+                break;
+            }
+        }
+
+        if (!esRedundante) {
+            mapaFinal.set(citaNormalizada, cita);
+        }
+    });
+
+    const resultadoFinal = Array.from(mapaFinal.values());
+    console.log(`✅ Citas de ultra precisión encontradas: ${resultadoFinal.length}`);
+    return resultadoFinal;
+}
 
   // Función principal para procesar archivos con OCR
   static async procesarArchivoConOCR(archivoPath, tipoArchivo) {
@@ -1376,36 +1466,65 @@ static async getDocumentos(req, res) {
   }
 
   static async sugerirReglamentos(idsDeDocumentosDeSesion) {
-        if (!idsDeDocumentosDeSesion || idsDeDocumentosDeSesion.length === 0) {
-            return [];
-        }
-        try {
-            const params = idsDeDocumentosDeSesion.map((_, i) => `$${i + 1}`).join(',');
-            const documentosSesionResult = await query(
-                `SELECT analisis_nlp FROM documentos WHERE id IN (${params})`,
-                idsDeDocumentosDeSesion
-            );
-
-            if (documentosSesionResult.rows.length === 0) { return []; }
-            
-            const citasDeLaSesion = new Set();
-            documentosSesionResult.rows.forEach(doc => {
-                const analisis = doc.analisis_nlp || {};
-                if (analisis.citas_reglamentos && Array.isArray(analisis.citas_reglamentos)) {
-                    analisis.citas_reglamentos.forEach(cita => citasDeLaSesion.add(cita));
-                }
-            });
-
-            const sugerenciasDirectas = [...citasDeLaSesion];
-            console.log(`✅ Sugerencias directas por citas: ${sugerenciasDirectas.length}`);
-            return sugerenciasDirectas;
-
-        } catch (error) {
-            console.error('❌ Error crítico al sugerir reglamentos:', error);
-            return ['Error al procesar sugerencias'];
-        }
+    if (!idsDeDocumentosDeSesion || idsDeDocumentosDeSesion.length === 0) {
+        return [];
     }
+    try {
+        const params = idsDeDocumentosDeSesion.map((_, i) => `$${i + 1}`).join(',');
+        const documentosSesionResult = await query(
+            `SELECT analisis_nlp FROM documentos WHERE id IN (${params})`,
+            idsDeDocumentosDeSesion
+        );
 
+        if (documentosSesionResult.rows.length === 0) { return []; }
+        
+        // 1. Extraer todas las citas con la función mejorada (ver Petición 2)
+        let citasUnicas = new Set();
+        documentosSesionResult.rows.forEach(doc => {
+            const analisis = doc.analisis_nlp || {};
+            if (analisis.citas_reglamentos && Array.isArray(analisis.citas_reglamentos)) {
+                analisis.citas_reglamentos.forEach(cita => citasUnicas.add(cita));
+            }
+        });
+        const citasArray = [...citasUnicas];
+        if (citasArray.length === 0) return [];
+
+        // 2. Buscar en la DB documentos cuyo título coincida con las citas
+        const searchPatterns = citasArray.map(cita => `%${cita}%`);
+        const documentosEncontradosResult = await query(
+            `SELECT id, titulo FROM documentos WHERE titulo ILIKE ANY($1)`,
+            [searchPatterns]
+        );
+        const mapaDocumentos = new Map(documentosEncontradosResult.rows.map(doc => [doc.titulo.toLowerCase(), doc]));
+
+        // 3. Construir el resultado final con información de enlace
+        const sugerencias = citasArray.map(cita => {
+            const docEncontrado = mapaDocumentos.get(cita.toLowerCase());
+            if (docEncontrado) {
+                return {
+                    texto: cita,
+                    esEnlace: true,
+                    documento_id: docEncontrado.id,
+                    documento_titulo: docEncontrado.titulo
+                };
+            } else {
+                return {
+                    texto: cita,
+                    esEnlace: false,
+                    documento_id: null,
+                    documento_titulo: null
+                };
+            }
+        });
+
+        console.log(`✅ Sugerencias enriquecidas generadas: ${sugerencias.length}`);
+        return sugerencias;
+
+    } catch (error) {
+        console.error('❌ Error crítico al sugerir reglamentos:', error);
+        return [{ texto: 'Error al procesar sugerencias', esEnlace: false, documento_id: null, documento_titulo: null }];
+    }
+}
 
   // Calcular similitud entre documentos (mejorado)
   static calculateSimilarity(keywords1, keywords2, texto1, texto2) {
