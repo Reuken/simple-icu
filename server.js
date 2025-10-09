@@ -50,7 +50,7 @@ app.use(session({
     tableName: 'user_sessions',
     createTableIfMissing: true
   }),
-  secret: process.env.SESSION_SECRET || 'icu-secret-key-2024-super-secure',
+  secret: process.env.SESSION_SECRET || 'icu-sskey',
   resave: false,
   saveUninitialized: false,
   cookie: { 
