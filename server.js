@@ -413,7 +413,13 @@ app.get('/dashboard', requireAuth, async (req, res) => {
 });
 
 // =================== RUTA DE REPORTES/OCR ===================
-app.get('/api/reportes/calidad-ocr', ReportController.getCalidadOCR);
+app.get('/api/reportes/resumen', requireAuth, ReportController.getResumenGeneral);
+app.get('/api/reportes/calidad-ocr', requireAuth, ReportController.getCalidadOCR);
+app.get('/api/reportes/temporal', requireAuth, ReportController.getAnalisisTemporal);
+app.get('/api/reportes/comisiones', requireAuth, ReportController.getDistribucionComisiones);
+app.get('/api/reportes/nlp', requireAuth, ReportController.getAnalisisNLP);
+app.get('/api/reportes/recientes', requireAuth, ReportController.getDocumentosRecientes);
+app.get('/api/reportes/metodos-procesamiento', requireAuth, ReportController.getMetodosProcesamiento); // Ruta para el método que faltaba
 
 
 // =================== RUTAS DE USUARIOS ===================

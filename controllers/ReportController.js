@@ -968,6 +968,24 @@ class ReportController {
     }
   }
 
+  static async getMetodosProcesamiento(req, res) {
+        try {
+            const result = await query(`
+                SELECT 
+                    metadatos_procesamiento->>'metodo_extraccion' as metodo, 
+                    COUNT(*) as cantidad 
+                FROM documentos 
+                WHERE metadatos_procesamiento->>'metodo_extraccion' IS NOT NULL
+                GROUP BY metodo
+            `);
+            res.json(result.rows);
+        } catch (error) {
+            console.error('Error obteniendo métodos de procesamiento:', error);
+            res.status(500).json({ error: 'Error obteniendo métodos de procesamiento' });
+        }
+    }
+
+
   // Obtener análisis de calidad OCR
   static async getCalidadOCR(req, res) {
     try {
