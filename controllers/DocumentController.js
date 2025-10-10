@@ -498,79 +498,80 @@ class DocumentController {
 
   // Obtener lista de documentos
 static async getDocumentos(req, res) {
-  try {
-      const { page = 1, limit = 15, search = '', comision_id = '', categoria = '' } = req.query; // Añadimos comision_id como filtro
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const { limit = 15, search = '', comision_id = '', categoria = '' } = req.query;
+      const offset = (page - 1) * parseInt(limit);
       
       let queryText = `
-      SELECT
-        d.id, d.titulo, d.remitente, d.categoria,
-        d.palabras_clave, d.analisis_nlp, d.recomendaciones, d.metadatos_procesamiento,
-        c.nombre AS comision_nombre,
-        d.fecha_ingreso AS fecha_subida,
-        u.nombre AS subido_por
-      FROM documentos d
-      LEFT JOIN comisiones c ON d.comision_id = c.id
-      LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
-      WHERE 1 = 1
-    `;
-    let countQuery = `SELECT COUNT(*) FROM documentos d LEFT JOIN comisiones c ON d.comision_id = c.id LEFT JOIN usuarios u ON d.usuario_creador_id = u.id WHERE 1 = 1`;
-    
+        SELECT
+          d.id, d.titulo, d.remitente, d.categoria,
+          d.palabras_clave, d.analisis_nlp, d.recomendaciones, d.metadatos_procesamiento,
+          c.nombre AS comision_nombre,
+          d.fecha_ingreso AS fecha_subida,
+          u.nombre AS subido_por
+        FROM documentos d
+        LEFT JOIN comisiones c ON d.comision_id = c.id
+        LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
+        WHERE 1 = 1
+      `;
+      let countQuery = `SELECT COUNT(*) FROM documentos d LEFT JOIN comisiones c ON d.comision_id = c.id LEFT JOIN usuarios u ON d.usuario_creador_id = u.id WHERE 1 = 1`;
+      
       const queryParams = [];
       let paramIndex = 1;
 
       if (search) {
         const searchClause = ` AND (d.titulo ILIKE $${paramIndex} OR d.remitente ILIKE $${paramIndex} OR c.nombre ILIKE $${paramIndex} OR u.nombre ILIKE $${paramIndex})`;
-        queryText += searchClause; // 👇 CAMBIO
+        queryText += searchClause;
         countQuery += searchClause;
         queryParams.push(`%${search}%`);
         paramIndex++;
       }
-
-      if (comision_id) { // Filtro por comisión
+      if (comision_id) {
         const comisionClause = ` AND d.comision_id = $${paramIndex}`;
-        queryText += comisionClause; // 👇 CAMBIO
+        queryText += comisionClause;
         countQuery += comisionClause;
         queryParams.push(comision_id);
         paramIndex++;
       }
-
-      if (categoria) { // Filtro por categoria
-      const categoryClause = ` AND d.categoria = $${paramIndex}`;
-      queryText += categoryClause;
-      countQuery += categoryClause;
-      queryParams.push(categoria);
-      paramIndex++;
-    }
+      if (categoria) {
+        const categoryClause = ` AND d.categoria = $${paramIndex}`;
+        queryText += categoryClause;
+        countQuery += categoryClause;
+        queryParams.push(categoria);
+        paramIndex++;
+      }
       
       const totalDocumentsResult = await query(countQuery, queryParams);
       const totalDocuments = parseInt(totalDocumentsResult.rows[0].count);
       const totalPages = Math.ceil(totalDocuments / parseInt(limit));
 
-      queryText += ` ORDER BY d.fecha_ingreso DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1} `;
+      queryText += ` ORDER BY d.fecha_ingreso DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       queryParams.push(parseInt(limit), offset);
-    
+      
       const result = await query(queryText, queryParams);
 
-     const documentosProcessed = result.rows.map(doc => ({
-          ...doc,
-          palabras_clave: parseJSONSeguro(doc.palabras_clave, []),
-      analisis_nlp: parseJSONSeguro(doc.analisis_nlp, {}),
-      recomendaciones: parseJSONSeguro(doc.recomendaciones, []),
-      metadatos_procesamiento: parseJSONSeguro(doc.metadatos_procesamiento, {})
-        }));
+      const documentosProcessed = result.rows.map(doc => ({
+        ...doc,
+        palabras_clave: parseJSONSeguro(doc.palabras_clave, []),
+        analisis_nlp: parseJSONSeguro(doc.analisis_nlp, {}),
+        recomendaciones: parseJSONSeguro(doc.recomendaciones, []),
+        metadatos_procesamiento: parseJSONSeguro(doc.metadatos_procesamiento, {})
+      }));
 
-        // Se envía un único objeto JSON que contiene toda la información
-        res.json({
-            documents: documentosProcessed, // <-- Se usa la constante procesada
-            currentPage: parseInt(page),
-            totalPages: totalPages
-        });
+      res.json({
+          documents: documentosProcessed,
+          currentPage: page,
+          totalPages: totalPages,
+          totalDocuments: totalDocuments
+      });
+
     } catch (error) {
       console.error('Error obteniendo documentos:', error);
-      res.status(500).json({ error: 'Error obteniendo documentos' });
+      res.status(500).json({ error: 'Error interno del servidor al obtener documentos.' });
     }
   }
+
 
   static async deleteDocumento(req, res) {
     const { id } = req.params;
