@@ -12,6 +12,25 @@ const sentimentAnalyzer = new natural.SentimentAnalyzer('Spanish', PorterStemmer
 
 // Configuración de NLP en español
 // CORREGIDO: Se borro la linea 10
+function parseJSONSeguro(data, defaultValue = null) {
+  // Si ya es un objeto (y no es nulo), lo devolvemos directamente.
+  if (typeof data === 'object' && data !== null) {
+    return data;
+  }
+  // Si no es un string o es un string vacío, devolvemos el valor por defecto.
+  if (typeof data !== 'string' || data.trim() === '') {
+    return defaultValue;
+  }
+  try {
+    // Intentamos parsear el JSON.
+    return JSON.parse(data);
+  } catch (error) {
+    // Si falla, mostramos una advertencia y devolvemos el valor por defecto.
+    console.warn(`Advertencia: No se pudo parsear el JSON. Valor: "${data.substring(0, 50)}...".`);
+    return defaultValue;
+  }
+}
+
 
 class DocumentController {
   
