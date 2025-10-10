@@ -3,7 +3,7 @@ FROM node:18-alpine
 
 # Instala las dependencias del sistema: Tesseract, sus datos en español y GraphicsMagick
 # Esto es CRUCIAL y la razón principal para usar Docker aquí.
-RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-spa graphicsmagick
+RUN apk add --no-cache tesseract-ocr tesseract-ocr-data-spa graphicsmagick ghostscript
 
 # Establece el directorio de trabajo dentro del contenedor
 WORKDIR /usr/src/app
