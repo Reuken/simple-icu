@@ -521,7 +521,7 @@ app.get('/documentos', requireAuth, requireRole(['administrativo', 'consejero' ,
   DocumentController.getDocumentosPage(req, res);
 });
 
-app.get('/api/documentos', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/documentos', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   DocumentController.getDocumentos(req, res);
 });
 
@@ -537,15 +537,15 @@ app.post('/api/documentos', requireAuth, requireRole(['administrativo', 'superad
     });
 });
 
-app.get('/api/documentos/:id/download', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/documentos/:id/download', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   DocumentController.downloadDocumento(req, res);
 });
 
-app.get('/api/documentos/:id/preview', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/documentos/:id/preview', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   DocumentController.previewDocumento(req, res);
 });
 
-app.delete('/api/documentos/:id', requireAuth, requireRole(['administrativo', 'superadmin']), (req, res) => {
+app.delete('/api/documentos/:id', requireAuth, requireRole(['administrativo', 'superadmin', 'superadmin']), (req, res) => {
   DocumentController.deleteDocumento(req, res);
 });
 
@@ -586,36 +586,36 @@ app.get('/reportes', requireAuth, requireRole(['administrativo' , 'superadmin'])
   ReportController.getReportesPage(req, res);
 });
 
-app.get('/api/reportes/resumen', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/resumen', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getResumenGeneral(req, res);
 });
 
-app.get('/api/reportes/temporal', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/temporal', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getAnalisisTemporal(req, res);
 });
 
-app.get('/api/reportes/comisiones', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/comisiones', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getDistribucionComisiones(req, res);
 });
 
-app.get('/api/reportes/palabras-clave', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/palabras-clave', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getPalabrasClave(req, res);
 });
 
-app.get('/api/reportes/nlp', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/nlp', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getAnalisisNLP(req, res);
 });
 
-app.get('/api/reportes/recientes', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/recientes', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getDocumentosRecientes(req, res);
 });
 
-app.get('/api/reportes/documentos', requireAuth, requireRole(['administrativo', 'consejero']), (req, res) => {
+app.get('/api/reportes/documentos', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), (req, res) => {
   ReportController.getDocumentosReport(req, res);
 });
 
 // Ruta auxiliar para obtener comisiones (necesaria para filtros)
-app.get('/api/comisiones', requireAuth, requireRole(['administrativo', 'consejero']), async (req, res) => {
+app.get('/api/comisiones', requireAuth, requireRole(['administrativo', 'consejero', 'superadmin']), async (req, res) => {
   try {
     const comisiones = await Comision.getAll();
     res.json(comisiones);
