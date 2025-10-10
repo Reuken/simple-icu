@@ -484,21 +484,19 @@ static async getDocumentos(req, res) {
       const offset = (parseInt(page) - 1) * parseInt(limit);
       
       let queryText = `
-        SELECT
-          d.id,
-          d.titulo,
-          d.remitente,
-          d.categoria,
-          c.nombre AS comision_nombre,
-          d.fecha_ingreso AS fecha_subida,
-          u.nombre AS subido_por,
-          d.archivo_path
-        FROM documentos d
-        LEFT JOIN comisiones c ON d.comision_id = c.id
-        LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
-        WHERE 1 = 1
-      `;
-      let countQuery = `SELECT COUNT(*) FROM documentos d LEFT JOIN comisiones c ON d.comision_id = c.id LEFT JOIN usuarios u ON d.usuario_creador_id = u.id WHERE 1 = 1`;
+      SELECT
+        d.id, d.titulo, d.remitente, d.categoria,
+        d.palabras_clave, d.analisis_nlp, d.recomendaciones, d.metadatos_procesamiento,
+        c.nombre AS comision_nombre,
+        d.fecha_ingreso AS fecha_subida,
+        u.nombre AS subido_por
+      FROM documentos d
+      LEFT JOIN comisiones c ON d.comision_id = c.id
+      LEFT JOIN usuarios u ON d.usuario_creador_id = u.id
+      WHERE 1 = 1
+    `;
+    let countQuery = `SELECT COUNT(*) FROM documentos d LEFT JOIN comisiones c ON d.comision_id = c.id LEFT JOIN usuarios u ON d.usuario_creador_id = u.id WHERE 1 = 1`;
+    
       const queryParams = [];
       let paramIndex = 1;
 
@@ -537,10 +535,10 @@ static async getDocumentos(req, res) {
 
      const documentosProcessed = result.rows.map(doc => ({
           ...doc,
-          palabras_clave: doc.palabras_clave || [],
-          analisis_nlp: doc.analisis_nlp || {},
-          recomendaciones: doc.recomendaciones || [],
-          metadatos_procesamiento: doc.metadatos_procesamiento || {}
+          palabras_clave: parseJSONSeguro(doc.palabras_clave, []),
+      analisis_nlp: parseJSONSeguro(doc.analisis_nlp, {}),
+      recomendaciones: parseJSONSeguro(doc.recomendaciones, []),
+      metadatos_procesamiento: parseJSONSeguro(doc.metadatos_procesamiento, {})
         }));
 
         // Se envía un único objeto JSON que contiene toda la información
