@@ -936,7 +936,7 @@ class ReportController {
       try {
     // 1. Verificar que el dato existe y es un string no vacío
       if (row.palabras_clave && typeof row.palabras_clave === 'string') {
-      const keywords = JSON.parse(row.palabras_clave);
+      const keywords = parseJSONSeguro(row.palabras_clave, []);
       if (Array.isArray(keywords)) {
         keywords.forEach(k => uniqueKeywords.add(k));
           }
