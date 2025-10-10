@@ -2,6 +2,39 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+let dbConfig;
+
+// Verifica si estamos en un entorno de producción (como Render)
+if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
+    // --- CONFIGURACIÓN PARA RENDER ---
+    console.log('🚀 Entorno de producción detectado. Usando DATABASE_URL.');
+    dbConfig = {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+            rejectUnauthorized: false // Requerido para conexiones seguras en Render
+        }
+    };
+} else {
+    // --- CONFIGURACIÓN PARA DESARROLLO LOCAL ---
+    console.log('🛠️ Entorno de desarrollo local detectado. Usando variables .env.');
+    dbConfig = {
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT) || 5432,
+        database: process.env.DB_NAME || 'db_icu',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || '',
+        max: 50, // máximo número de clientes en el pool
+        idleTimeoutMillis: 30000, // cuánto tiempo un cliente permanece inactivo antes de ser cerrado
+        connectionTimeoutMillis: 2000, // tiempo de espera al intentar conectar
+        statement_timeout: 60000, // tiempo de espera para queries
+        query_timeout: 60000,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  };
+
+}
+
+
+/*
 // Configuración de la base de datos
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -16,6 +49,7 @@ const dbConfig = {
   query_timeout: 60000,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 };
+*/
 
 // Crear pool de conexiones
 const pool = new Pool(dbConfig);
