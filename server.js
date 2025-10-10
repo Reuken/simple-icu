@@ -12,7 +12,9 @@ const ReportController = require('./controllers/ReportController');
 require('dotenv').config();
 
 const app = express();
+app.set('trust proxy', 1);
 const port = process.env.PORT || 3000;
+
 
 // Configurar multer para subida de archivos
 const storage = multer.diskStorage({
@@ -55,7 +57,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    maxAge: 24 * 60 * 60 * 1000, // 24 horas
+    sameSite: 'lax'
   }
 }));
 
