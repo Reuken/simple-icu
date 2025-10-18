@@ -249,31 +249,45 @@ function getPermisos(tipo_usuario, rol) {
 app.get('/dashboard', requireAuth, async (req, res) => {
   try {
     const usuario = req.session.usuario;
-    const stats = await SistemaUsuarios.getStats();
+/// const stats = await SistemaUsuarios.getStats();
     const permisos = usuario.permisos;
     
     // Generar tarjetas de módulos disponibles
-    let accionesHtml = '';
+    let accionesPrincipalesHtml = '';
+    let accionesInformativasHtml = '';
+//    let accionesHtml = '';
     if (permisos.ver_usuarios) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/usuarios'"><h4>👥 Usuarios</h4><p>Gestionar usuarios del sistema</p>${permisos.crear_usuarios ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
+      accionesPrincipalesHtml +=`<div class="action-card" onclick="window.location.href='/usuarios'"><h4>👥 Gestion de Usuarios</h4><p>Gestionar usuarios del sistema</p>${permisos.crear_usuarios ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
     }
     if (permisos.ver_documentos) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/documentos'"><h4>📄 Documentos</h4><p>Gestionar documentos del ICU</p>${permisos.subir_documentos ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
+      accionesPrincipalesHtml += `<div class="action-card" onclick="window.location.href='/documentos'"><h4>📄 Gestion de Documentos</h4><p>Gestionar documentos del ICU</p>${permisos.subir_documentos ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
     }
     if (permisos.ver_comisiones) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/comisiones'"><h4>🏛️ Comisiones</h4><p>Ver todas las comisiones</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
-    }
+      accionesInformativasHtml += `
+              <div class="action-card" onclick="window.location.href='/comisiones'">
+                <h4>🏛️ Conformación de comisiones</h4>
+                <p>Informacion de como estan conformadas las comisiones</p>
+                <span class="perm-badge view-only">👁️ Solo lectura</span>
+              </div>
+            `;
+          }
     if (permisos.ver_reportes) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/reportes'"><h4>📊 Reportes</h4><p>Ver reportes y análisis NLP</p>${permisos.generar_reportes ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
+      accionesPrincipalesHtml += `<div class="action-card" onclick="window.location.href='/reportes'"><h4>📊 Reportes</h4><p>Ver reportes y análisis NLP</p>${permisos.generar_reportes ? '<span class="perm-badge">✏️ Gestión completa</span>' : '<span class="perm-badge view-only">👁️ Solo lectura</span>'}</div>`;
     }
     if (permisos.ver_facultades) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/facultades'"><h4>🎓 Facultades</h4><p>Información de facultades y miembros</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
-    }
+      accionesInformativasHtml += `
+            <div class="action-card" onclick="window.location.href='/facultades'">
+              <h4>🎓 Delegados por facultades</h4>
+              <p>Información de los representantes por facultad</p>
+              <span class="perm-badge view-only">👁️ Solo lectura</span>
+            </div>
+          `;
+        }
     if (permisos.ver_mi_espacio) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/mi_espacio'"><h4>👔 Mi espacio ICU</h4><p>Informacion importante para los consejeros</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
+      accionesPrincipalesHtml += `<div class="action-card" onclick="window.location.href='/mi_espacio'"><h4>👔 Mi espacio ICU</h4><p>Informacion importante para los consejeros</p><span class="perm-badge view-only">👁️ Solo lectura</span></div>`;
     }
     if (permisos.gestionar_sesion) {
-      accionesHtml += `<div class="action-card" onclick="window.location.href='/gestion_sesion'"><h4>🗓️ Gestionar Sesión</h4><p>Editar la información de la próxima sesión.</p><span class="perm-badge">✏️ Gestión completa</span></div>`;
+      accionesPrincipalesHtml += `<div class="action-card" onclick="window.location.href='/gestion_sesion'"><h4>🗓️ Gestionar Sesión ICU</h4><p>Editar la información de la próxima sesión.</p><span class="perm-badge">✏️ Gestión completa</span></div>`;
     }
 
     // Generar tarjetas de comisiones del usuario
@@ -286,8 +300,14 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         </div>
       `).join('');
     } else {
-      comisionesHtml = '<p class="no-comision-msg">No está asignado a ninguna comisión actualmente.</p>';
+      comisionesHtml = '<p class="no-comision-msg">No está asignado a ninguna comisión actualmente o es administrativo.</p>';
     }
+
+    const gacetaHtml = `
+          <a href="https://www.uagrm.edu.bo/gaceta/cogobierno/icu" target="_blank" class="gaceta-link">
+              <span>📜 Gaceta U.A.G.R.M. - ICU</span>
+          </a>
+        `;
 
     // Enviar la página rediseñada
     res.send(`
@@ -301,43 +321,102 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
           <style>
               body { background-color: #f4f7f9; }
-              .main-container { max-width: 1400px; margin: 2rem auto; padding: 1rem; }
+              .main-container { max-width: 1600px; margin: 2rem auto; padding: 1rem; }
+              
+              /* --- ESTRUCTURA DE 3 COLUMNAS --- */
+            .dashboard-grid {
+                display: grid;
+                grid-template-columns: 1fr; /* 1 columna por defecto para móviles */
+                gap: 2rem;
+            }
+            @media (min-width: 1200px) { /* Se activa en pantallas grandes */
+                .dashboard-grid {
+                    /* Perfil (delgado) | Módulos (ancho) | Historial (medio) */
+                    grid-template-columns: 0.8fr 1.5fr 1fr;
+                }
+            }
+              
+              /* --- Contenedores de columnas --- */
+                .dashboard-column {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2rem; /* Espacio entre las tarjetas de una misma columna */
+                }
+
+              .info-card, .report-card {
+                background-color: #ffffff;
+                border-radius: 10px;
+                padding: 1.5rem;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+                border: 1px solid #e9ecef;
+            }
+
+            .info-card h3, .main-column h3 {
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: #343a40;
+                margin-top: 0;
+                margin-bottom: 1rem;
+                border-bottom: 1px solid #dee2e6;
+                padding-bottom: 0.75rem;
+                display: block; /* Borde a todo lo ancho */
+            }
+            .user-details p { margin: 0.5rem 0; }
+            
+            .quick-actions {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                gap: 1rem;
+            }
               .welcome-card {
-                  background: linear-gradient(135deg, #2a95e2ff, #cfe2ff); /* Gradiente de azules muy claros */
-                  /* Se elimina 'color: white;' para que herede el color oscuro del body */
-                  padding: 2.5rem 2rem;
-                  border-radius: 12px;
-                  margin-bottom: 2rem;
-                  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Sombra más sutil y neutral */
-                  border: 1px solid #dee2e6; /* Borde ligero para definir la tarjeta */
-}
-              .welcome-card h1 { font-size: 2.5rem; font-weight: 500; margin: 0 0 0.5rem 0; }
-              .welcome-card p { font-size: 1.2rem; opacity: 0.9; margin: 0; }
+                background: linear-gradient(135deg, #007BFF, #0056b3);
+                color: white;
+                padding: 1.5rem 2rem;
+                border-radius: 12px;
+                margin-bottom: 2rem;
+                box-shadow: 0 6px A20px rgba(0, 123, 255, 0.25);
+            }
+            .welcome-card h1 { font-size: 1.8rem; font-weight: 500; margin: 0 0 0.25rem 0; color: white; }
+            .welcome-card p { font-size: 1rem; opacity: 0.9; margin: 0; color: white; }
+
               .dashboard-grid {
-                  display: grid;
-                  grid-template-columns: 1fr;
-                  gap: 2rem;
+                display: grid;
+                grid-template-columns: 1fr; /* 1 columna por defecto para móviles */
+                gap: 2rem;
+            }
+              @media (min-width: 1200px) { /* Se activa en pantallas grandes */
+                  .dashboard-grid {
+                      /* Perfil (delgado) | Módulos (ancho) | Historial (medio) */
+                      grid-template-columns: 0.8fr 1.5fr 1fr;
+                  }
               }
-              @media (min-width: 1024px) {
-                  .dashboard-grid { grid-template-columns: 1fr 3fr; }
-              }
-              .sidebar-column .info-card {
-                  background-color: #ffffff; border-radius: 12px; padding: 2rem;
-                  box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eef;
-                  margin-bottom: 2rem;
-              }
-              .sidebar-column h3 {
-                  font-size: 1.5rem; font-weight: 500; color: #333; margin-top: 0;
-                  border-bottom: 2px solid #007BFF; padding-bottom: 0.5rem; display: inline-block;
-              }
-              .user-details p { font-size: 1rem; color: #555; line-height: 1.6; }
-              .user-details p strong { font-weight: 500; color: #333; }
+              .user-details p {
+                font-size: 0.9rem;
+                color: #495057;
+                margin: 0.75rem 0;
+                display: flex;
+                align-items: center;
+            }
+            .user-details p strong {
+                font-weight: 500;
+                color: #343a40;
+                min-width: 65px; /* Alinea los valores */
+                margin-right: 0.5rem;
+            }
               .comision-item {
                   background-color: #f8f9fa; border-left: 3px solid #007BFF;
                   padding: 1rem; border-radius: 6px; margin-bottom: 0.5rem;
               }
-              .comision-item strong { display: block; }
-              .no-comision-msg { font-style: italic; color: #6c757d; }
+              .comision-item {
+                background-color: #e9ecef;
+                color: #495057;
+                padding: 0.6rem 1rem;
+                border-radius: 6px;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            .no-comision-msg { font-style: italic; color: #6c757d; font-size: 0.9rem; }
+            
               
               .main-column h3 { font-size: 1.8rem; font-weight: 500; margin-bottom: 1.5rem; color: #333; }
               .quick-actions {
@@ -362,6 +441,54 @@ app.get('/dashboard', requireAuth, async (req, res) => {
               }
               .perm-badge { background-color: #d4edda; color: #155724; }
               .perm-badge.view-only { background-color: #e9ecef; color: #495057; }
+
+               /* Estilos para el boton de Gaceta */
+                      .gaceta-link {
+                            display: flex;
+                            align-items: center;
+                            padding: 0.8rem 1rem;
+                            background-color: #ffffff;
+                            border-radius: 10px;
+                            text-decoration: none;
+                            transition: all 0.3s ease;
+                            border: 1px solid #e9ecef;
+                            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+                        }
+                        .gaceta-link:hover {
+                            transform: translateY(-3px);
+                            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                            border-color: #007BFF;
+                            background-color: #e9ecef; border-color: #adb5bd;
+                        }
+                        .gaceta-link span { color: #0056b3; font-weight: 500; }
+                        
+                  /* Estilos para el historial de sesiones */
+                    .sesion-historial-item {
+                          border: 1px solid #eee;
+                          border-radius: 8px;
+                          padding: 1rem;
+                          margin-bottom: 1rem;
+                      }
+                      .sesion-historial-item:last-child { margin-bottom: 0; }
+                      .sesion-historial-item h4 { margin-top: 0; font-size: 1rem; }
+                      .sesion-historial-item ul { list-style: none; padding: 0; }
+                      .sesion-historial-item li {
+                          display: flex; justify-content: space-between; align-items: center;
+                          padding: 0.5rem 0; font-size: 0.9rem; border-top: 1px solid #f5f5f5;
+                      }
+                      .sesion-historial-item .btn {
+                          padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer;
+                      }
+                      .sesion-historial-item .btn-info { background-color: #17a2b8; color: white; }
+                      .sesion-historial-item .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+
+                    /* Estilos para botones dentro del historial */
+                      .sesion-historial-item .btn {
+                          padding: 0.4rem 0.8rem; border: none; border-radius: 4px;
+                          cursor: pointer; text-decoration: none; font-size: 0.9rem;
+                      }
+                      .sesion-historial-item .btn-info { background-color: #17a2b8; color: white; }
+                      .sesion-historial-item .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
           </style>
       </head>
       <body>
@@ -377,11 +504,11 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <div class="main-container">
               <div class="welcome-card">
                   <h1>¡Bienvenido, ${usuario.nombre}!</h1>
-                  <p>Usted ha ingresado como: <strong>${usuario.descripcion_rol}</strong></p>
+                  <p>Usted ha ingresado como: <strong>${usuario.descripcion_rol || 'Superadmin'}</strong></p>
               </div>
 
               <div class="dashboard-grid">
-                  <aside class="sidebar-column">
+                  <div class="dashboard-column">
                       <div class="info-card">
                           <h3>📋 Mi Información</h3>
                           <div class="user-details">
@@ -390,19 +517,126 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                               <p><strong>Tipo:</strong> ${usuario.tipo_usuario}</p>
                           </div>
                       </div>
+                      
                       <div class="info-card">
                           <h3>🏛️ Mis Comisiones</h3>
                           ${comisionesHtml}
                       </div>
-                  </aside>
-                  <section class="main-column">
-                      <h3>⚡ Módulos Disponibles</h3>
-                      <div class="quick-actions">
-                          ${accionesHtml}
-                      </div>
-                  </section>
-              </div>
-          </div>
+                        ${gacetaHtml}
+                  </div>
+
+                    <div class="dashboard-column">
+                    <div class="report-card">
+                        <h3>⚡ Módulos Principales</h3>
+                        <div class="quick-actions">${accionesPrincipalesHtml}</div>
+                    </div>
+                    ${accionesInformativasHtml ? `
+                    <div class="report-card">
+                        <h3>ℹ️ Sección Informativa</h3>
+                        <div class="quick-actions">${accionesInformativasHtml}</div>
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div class="dashboard-column">
+                    <div class="report-card">
+                        <div id="historial-sesiones-container">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+                        <div id="pdfModal" class="modal">
+                              <div class="modal-content-pdf">
+                                  <div class="modal-header">
+                                      <h2 id="pdfModalTitle">Previsualización</h2>
+                                      <span class="close-pdf-modal" onclick="closePdfModal()">&times;</span>
+                                  </div>
+                                  <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
+                              </div>
+                          </div>
+
+          <script>
+            // Cargar el historial
+            document.addEventListener('DOMContentLoaded', function() {
+                loadHistorialSesiones(); 
+            });
+
+            async function loadHistorialSesiones() {
+                const container = document.getElementById('historial-sesiones-container');
+                container.innerHTML = '<h3>Historial de Últimas Sesiones</h3><div class="loading">Cargando historial...</div>'; // Placeholder
+
+                try {
+                    const response = await fetch('/api/historial-sesiones');
+                    const sesiones = await response.json();
+
+                    if (!response.ok || !sesiones || sesiones.length === 0) {
+                        container.innerHTML += '<p>No hay historial de sesiones disponible.</p>';
+                        return;
+                    }
+
+                    let html = '<h3>Historial de Últimas Sesiones</h3>';
+                    sesiones.forEach(sesion => {
+                        const fechaFormateada = new Date(sesion.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+                        html += \`
+                            <div class="report-card sesion-historial-item">
+                                <h4>\${sesion.tipo} - \${fechaFormateada} (\${sesion.hora})</h4>
+                        \`;
+                        if (sesion.resoluciones && sesion.resoluciones.length > 0) {
+                            html += '<p><strong>Resoluciones Aprobadas:</strong></p><ul>';
+                            sesion.resoluciones.forEach(res => {
+                                html += \`
+                                    <li>
+                                        <span>\${res.titulo}</span>
+                                        <button class="btn btn-info btn-sm" onclick="viewPdf('\${res.id}', '\${res.titulo}')">Ver</button>
+                                    </li>
+                                \`;
+                            });
+                            html += '</ul>';
+                        } else {
+                            html += '<p><small>No se registraron resoluciones para esta sesión.</small></p>';
+                        }
+                        html += '</div>';
+                    });
+                    container.innerHTML = html;
+
+                } catch (error) {
+                    console.error('Error al cargar historial de sesiones:', error);
+                    container.innerHTML += '<div class="error">No se pudo cargar el historial.</div>';
+                }
+            }
+
+            function viewPdf(docId, docTitle) {
+                const modal = document.getElementById('pdfModal');
+                const viewer = document.getElementById('pdfViewer');
+                const titleEl = document.getElementById('pdfModalTitle');
+                if (modal && viewer && titleEl) {
+                    titleEl.textContent = docTitle;
+                    viewer.src = \`/api/documentos/\${docId}/preview\`;
+                    modal.style.display = 'block';
+                } else {
+                    console.error('Elementos del modal no encontrados');
+                    alert('Error al intentar abrir el visor de PDF.');
+                }
+            }
+            function closePdfModal() {
+                const modal = document.getElementById('pdfModal');
+                const viewer = document.getElementById('pdfViewer');
+                if (modal && viewer) {
+                    viewer.src = ''; // Detener carga
+                    modal.style.display = 'none';
+                }
+            }
+            // Cerrar modal al hacer clic fuera
+            window.onclick = function(event) {
+                const modal = document.getElementById('pdfModal');
+                if (event.target == modal) {
+                    closePdfModal();
+                }
+            }
+
+
+        </script>
       </body>
       </html>
     `);
@@ -411,6 +645,11 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     res.status(500).send('Error interno del servidor');
   }
 });
+
+// =================== RUTA DE HISTORIAL SESIONES ===================
+
+app.get('/api/historial-sesiones', requireAuth, ReportController.getHistorialSesiones);
+
 
 // =================== RUTA DE REPORTES/OCR ===================
 app.get('/api/reportes/resumen', requireAuth, ReportController.getResumenGeneral);
@@ -715,6 +954,47 @@ app.post('/api/sesion/update', requireAuth, requireRole(['administrativo', 'supe
     }
 });
 
+// =================== RUTAS A MI ESPACIO ICU ===================
+
+app.get('/mi_espacio', requireAuth, requireRole(['consejero', 'superadmin']), async (req, res) => {
+    try {
+        const usuario = req.session.usuario;
+        
+        // [NUEVO] Obtenemos la última sesión de la base de datos
+        const sesionQuery = `
+            SELECT s.*, 
+                   (SELECT json_agg(json_build_object('id', d.id, 'titulo', d.titulo))
+                    FROM documentos d
+                    JOIN sesion_documentos sd ON d.id = sd.documento_id
+                    WHERE sd.sesion_id = s.id) as documentos
+            FROM sesiones s
+            ORDER BY s.fecha DESC, s.hora DESC
+            LIMIT 1
+        `;
+        const sesionResult = await pool.query(sesionQuery);
+        
+        const proximaSesion = sesionResult.rows[0] || {};
+
+        const idsDeDocumentos = (proximaSesion.documentos || []).map(doc => doc.id);
+
+        // 3. Llamar a la función para obtener las sugerencias procesadas
+        const sugerenciasProcesadas = await DocumentController.sugerirReglamentos(idsDeDocumentos);
+        
+        // 4. Reemplazar la propiedad 'reglamentos' con el resultado enriquecido
+        proximaSesion.reglamentos = sugerenciasProcesadas;
+
+        const todosLosReglamentos = await DocumentController.getTodosLosReglamentos();
+
+        const correspondenciaData = await ReportController.getCorrespondencia(null);
+        
+        // 3. Enviar todos los datos a la página
+        res.send(generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, correspondenciaData));
+
+    } catch (error) {
+        console.error('Error al cargar Mi Espacio ICU:', error);
+        res.status(500).send('Error al cargar la página.');
+    }
+});
 
 // Logout
 app.get('/logout', (req, res) => {
@@ -747,46 +1027,6 @@ app.get('/health', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
-});
-
-// =================== RUTAS A MI ESPACIO ICU ===================
-
-app.get('/mi_espacio', requireAuth, requireRole(['consejero', 'superadmin']), async (req, res) => {
-    try {
-        const usuario = req.session.usuario;
-        
-        // [NUEVO] Obtenemos la última sesión de la base de datos
-        const sesionQuery = `
-            SELECT s.*, 
-                   (SELECT json_agg(json_build_object('id', d.id, 'titulo', d.titulo))
-                    FROM documentos d
-                    JOIN sesion_documentos sd ON d.id = sd.documento_id
-                    WHERE sd.sesion_id = s.id) as documentos
-            FROM sesiones s
-            ORDER BY s.fecha DESC, s.hora DESC
-            LIMIT 1
-        `;
-        const sesionResult = await pool.query(sesionQuery);
-        
-        const proximaSesion = sesionResult.rows[0] || {};
-
-        const idsDeDocumentos = (proximaSesion.documentos || []).map(doc => doc.id);
-
-        // 3. Llamar a la función para obtener las sugerencias procesadas
-        const sugerenciasProcesadas = await DocumentController.sugerirReglamentos(idsDeDocumentos);
-        
-        // 4. Reemplazar la propiedad 'reglamentos' con el resultado enriquecido
-        proximaSesion.reglamentos = sugerenciasProcesadas;
-
-        const todosLosReglamentos = await DocumentController.getTodosLosReglamentos();
-        
-        // 3. Enviar todos los datos a la página
-        res.send(generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos));
-
-    } catch (error) {
-        console.error('Error al cargar Mi Espacio ICU:', error);
-        res.status(500).send('Error al cargar la página.');
-    }
 });
 
 // Pagina Usuarios
@@ -1106,7 +1346,7 @@ function generateFacultadesPage(facultades) {
         </nav>
 
         <main><div class="comision-grid-container">
-            <h1>🏛️ Facultades</h1>
+            <h1>🏛️ Facultades y Gremios</h1>
                 ${facultadesHtml}
                 </div>
         </main>
@@ -1116,7 +1356,7 @@ function generateFacultadesPage(facultades) {
     </html>
   `;
 }
-function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos) {
+function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, correspondenciaData) {
   const { nombre, comisiones, descripcion_rol } = usuario;
   const comisionesHtml = comisiones.map(c => `<span class="comision-tag">${c.nombre}</span>`).join(' ') || '<span class="comision-tag none">Ninguna asignada</span>';
 
@@ -1161,7 +1401,12 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos) {
       `).join('')
     : '<li>No hay reglamentos disponibles.</li>';
 
-
+  const correspondenciaHtml = correspondenciaData && correspondenciaData.length > 0
+    ? correspondenciaData.map(item => {
+        const fecha = new Date(item.fecha_sesion).toLocaleDateString('es-ES');
+        return `<li><span>${item.descripcion_tema}</span> <small>(Sesión: ${fecha})</small></li>`;
+      }).join('')
+    : '<li>No hay correspondencia registrada.</li>';
 
   return `
     <!DOCTYPE html>
@@ -1353,6 +1598,22 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos) {
             .btn-info { background-color: rgba(255, 255, 255, 0.2); color: white; }
             .btn-info:hover { background-color: rgba(255, 255, 255, 0.3); }
             .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+
+            /* --- Estilos para la lista de correspondencia (dentro de .session-card) --- */
+            .session-card .correspondencia-list li {
+                background-color: rgba(255, 255, 255, 0.1);
+                margin-bottom: 0.5rem;
+                padding: 0.75rem 1rem;
+                border-radius: 4px;
+                font-size: 0.95rem; /* Ligeramente más grande que sugerencias */
+            }
+            .session-card .correspondencia-list li span {
+                display: block; /* Para que la fecha quede abajo */
+            }
+            .session-card .correspondencia-list li small {
+                font-size: 0.8em;
+                opacity: 0.7;
+            }
         </style>
     </head>
     <body>
@@ -1377,6 +1638,13 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos) {
                     <h3>Reglamentos Disponibles</h3>
                     <ul>
                         ${todosReglamentosHtml}
+                    </ul>
+                </div>
+
+                <div class="sidebar-card" style="margin-top: 2rem;">
+                    <h3>📬 Correspondencia</h3>
+                    <ul class="correspondencia-list">
+                        ${correspondenciaHtml}
                     </ul>
                 </div>
             </div>
@@ -1415,22 +1683,30 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos) {
 
             <script>
             function viewPdf(docId, docTitle) {
-                      const modal = document.getElementById('pdfModal');
-                      const viewer = document.getElementById('pdfViewer');
-                      document.getElementById('pdfModalTitle').textContent = docTitle;
-                      viewer.src = \`/api/documentos/\${docId}/preview\`;
-                      modal.style.display = 'block';
-                  }
-                  function closePdfModal() {
-                      const modal = document.getElementById('pdfModal');
-                      document.getElementById('pdfViewer').src = '';
-                      modal.style.display = 'none';
-                  }
-                  window.onclick = function(event) {
-                      if (event.target == document.getElementById('pdfModal')) {
-                          closePdfModal();
-                      }
-                  }
+                const modal = document.getElementById('pdfModal');
+                const viewer = document.getElementById('pdfViewer');
+                if (modal && viewer && document.getElementById('pdfModalTitle')) {
+                    document.getElementById('pdfModalTitle').textContent = docTitle;
+                    viewer.src = \`/api/documentos/\${docId}/preview\`;
+                    modal.style.display = 'block';
+                } else {
+                    console.error('Elementos del modal no encontrados');
+                }
+            }
+            function closePdfModal() {
+                const modal = document.getElementById('pdfModal');
+                const viewer = document.getElementById('pdfViewer');
+                if (modal && viewer) {
+                    viewer.src = '';
+                    modal.style.display = 'none';
+                }
+            }
+            window.onclick = function(event) {
+                const modal = document.getElementById('pdfModal');
+                if (event.target == modal) {
+                    closePdfModal();
+                }
+            }
             </script>
     </body>
     </html>

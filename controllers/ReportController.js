@@ -871,6 +871,65 @@ class ReportController {
     }
   }
 
+  //MOSTRAR HISTORIAL DE SESIONES EN EL DASHBOARD
+  static async getHistorialSesiones(req, res) {
+    try {
+        const result = await query(`
+            SELECT 
+                s.id, s.tipo, s.fecha, s.hora,
+                (SELECT json_agg(json_build_object('id', d.id, 'titulo', d.titulo))
+                 FROM documentos d
+                 JOIN sesion_documentos sd ON d.id = sd.documento_id
+                 WHERE sd.sesion_id = s.id AND d.categoria = 'Resolucion') as resoluciones
+            FROM sesiones s
+            ORDER BY s.fecha DESC, s.hora DESC
+            LIMIT 5
+        `);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error obteniendo historial de sesiones:', error);
+        res.status(500).json({ error: 'Error interno' });
+    }
+  }
+
+  static async getCorrespondencia(req, res) { // Mantenemos req, res por si se usa como API
+    try {
+        const result = await query(`
+            SELECT id, fecha, temas 
+            FROM sesiones 
+            WHERE temas IS NOT NULL AND temas != ''
+            ORDER BY fecha DESC
+        `);
+        
+        const correspondencia = [];
+        result.rows.forEach(sesion => {
+            const temasArray = (sesion.temas || '').split('|'); // Manejo seguro por si es null
+            temasArray.forEach(tema => {
+                if (tema.trim()) {
+                    correspondencia.push({
+                        sesion_id: sesion.id,
+                        fecha_sesion: sesion.fecha,
+                        descripcion_tema: tema.trim()
+                    });
+                }
+            });
+        });
+        
+        // Si 'res' existe, es una llamada API, enviamos JSON
+        if (res) {
+            return res.json(correspondencia);
+        }
+        // Si no, es una llamada interna, devolvemos los datos
+        return correspondencia; 
+
+    } catch (error) {
+        console.error('Error obteniendo correspondencia:', error);
+        if (res) {
+            return res.status(500).json({ error: 'Error interno' });
+        }
+        throw error; // Propagar el error si es una llamada interna
+    }
+}
   // Obtener resumen general (actualizado con OCR)
   static async getResumenGeneral(req, res) {
     try {

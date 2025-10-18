@@ -81,7 +81,9 @@ class DocumentController {
                     .category-resolucion { background-color: #007BFF; } /* Azul */
                     .category-reglamento { background-color: #6f42c1; } /* Morado */
                     .category-informe { background-color: #fd7e14; }   /* Naranja */
-                    .category-general { background-color: #6c757d; }   /* Gris */
+                    .category-acta { background-color: #5db464ff; }   /* Gris */
+                    .category-citacion { background-color: #f5bd05ff; }   /* Amarillo */
+                    .category-pronunciamiento { background-color: #bb2e2eff; }   /* Rojo */
                     .delete-button {
                         background-color: #dc3545;
                         color: white;
@@ -146,9 +148,12 @@ class DocumentController {
 
                          <label for="categoria">Categoría:</label>
                             <select id="categoria" name="categoria">
+                                <option value="Acta">Acta</option>
+                                <option value="Citacion">Citacion</option>
+                                <option value="Informe de comision">Informe</option>
+                                <option value="Pronunciamiento">Pronunciamiento</option>
                                 <option value="Reglamento">Reglamento</option>
                                 <option value="Resolucion">Resolución</option>
-                                <option value="Informe de comision">Informe</option>
                             </select>
 
                         <div class="drop-area" id="drop-area">
@@ -172,10 +177,12 @@ class DocumentController {
                          </select>
                          <select id="document-category-filter">
                               <option value="">Todas las categorías</option>
-                              <option value="Reglamento">Reglamento</option>
-                              <option value="Resolucion">Resolución</option>
-                              <option value="Informe de comision">Informe</option>
-                              <option value="General">General</option>
+                                <option value="Acta">Acta</option>
+                                <option value="Citacion">Citacion</option>
+                                <option value="Informe de comision">Informe</option>
+                                <option value="Pronunciamiento">Pronunciamiento</option>
+                                <option value="Reglamento">Reglamento</option>
+                                <option value="Resolucion">Resolución</option>
                           </select>
                         <button class="cta-button" onclick="loadDocuments()">Buscar</button>
                     </div>

@@ -178,10 +178,16 @@ main {
                   color: white;
               }
               .dashboard-container {
-                  max-width: 1200px;
+                  max-width: 1500px;
                   margin: 2rem auto;
-                  padding: 0 1rem;
-              }
+                  padding: 1rem;
+                }
+
+              .dashboard-main-grid {
+                    display: grid;
+                    grid-template-columns: 1fr; /* Single column by default (mobile) */
+                    gap: 2rem; /* Space between sections */
+                }
               .welcome-card {
                   background: linear-gradient(135deg, #2a95e2ff, #cfe2ff); /* Gradiente de azules muy claros */
                   /* Se elimina 'color: white;' para que herede el color oscuro del body */
@@ -735,6 +741,50 @@ main {
     width: 100%;
     height: 100%;
     border: none;
+}
+
+/*Estilos dashboard*/
+
+@media (min-width: 992px) { 
+    .dashboard-main-grid {
+        /* Create two columns: left takes up roughly 2/3, right takes 1/3 */
+        grid-template-columns: 2fr 1fr; 
+    }
+
+    .dashboard-left-column {
+        /* Sections within the left column will stack vertically */
+        display: flex;
+        flex-direction: column;
+        gap: 2rem; /* Consistent spacing within the column */
+    }
+    
+    .dashboard-right-column {
+         /* Optional: Add a top margin if needed */
+        margin-top: 0; /* Adjust as needed */
+    }
+}
+
+/* Adjust card margins if needed */
+.report-card, .info-card, .comisiones-section, .gaceta-button {
+    margin-bottom: 0; /* Remove default bottom margin if grid gap handles spacing */
+}
+
+/* Ensure headings have appropriate margins */
+.dashboard-left-column h3 {
+    margin-top: 1rem; /* Add some space above module headings */
+    margin-bottom: 1rem;
+}
+
+/* Style for the history container if needed */
+#historial-sesiones-container {
+    /* Optional: Add specific styling */
+}
+
+/* Existing styles for cards remain the same */
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
 }
 
 /* Animaciones para el modal */
