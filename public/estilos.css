@@ -775,11 +775,6 @@ main {
     margin-bottom: 1rem;
 }
 
-/* Style for the history container if needed */
-#historial-sesiones-container {
-    /* Optional: Add specific styling */
-}
-
 /* Existing styles for cards remain the same */
 .quick-actions {
     display: grid;

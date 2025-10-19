@@ -920,26 +920,43 @@ app.post('/api/sesion/update', requireAuth, requireRole(['administrativo', 'supe
         const reglamentosSugeridos = await DocumentController.sugerirReglamentos(idsDocumentosSeleccionados);
         const reglamentosString = reglamentosSugeridos.map(r => r.texto).join('|')
         
-        let currentSesionId = sesion_id;
+       let currentSesionId = null;
+       if (sesion_id && sesion_id.trim() !== '') {
+            const parsedId = parseInt(sesion_id, 10);
+            // Solo si es un número válido, lo usamos.
+            if (!isNaN(parsedId)) {
+                currentSesionId = parsedId;
+            } else {
+                // Si no es un número válido (aunque no debería pasar), lanzamos error.
+                throw new Error(`ID de sesión inválido recibido: ${sesion_id}`);
+            }
+        }
 
-        if (currentSesionId) { // Actualizar sesión
+        if (currentSesionId) { // Actualizar sesión existente (ID es un número)
+            console.log(`🔄 Actualizando sesión ID: ${currentSesionId}`);
             await client.query(
                 'UPDATE sesiones SET tipo=$1, lugar=$2, fecha=$3, hora=$4, temas=$5, reglamentos=$6, updated_at=NOW() WHERE id=$7',
-                [tipo, lugar, fecha, hora, temasString, reglamentosString, currentSesionId]
+                [tipo, lugar, fecha, hora, temasString, reglamentosString, currentSesionId] // currentSesionId es un número
             );
-        } else { // Crear nueva sesión
+        } else { // Crear nueva sesión (ID es null)
+            console.log('➕ Creando nueva sesión...');
             const result = await client.query(
                 'INSERT INTO sesiones (tipo, lugar, fecha, hora, temas, reglamentos) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
                 [tipo, lugar, fecha, hora, temasString, reglamentosString]
             );
-            currentSesionId = result.rows[0].id;
+            currentSesionId = result.rows[0].id; // Obtenemos el nuevo ID numérico
+            console.log(`✅ Nueva sesión creada con ID: ${currentSesionId}`);
         }
 
         // Gestionar documentos asociados
+        console.log(`🔗 Asociando documentos a sesión ID: ${currentSesionId}`);
         await client.query('DELETE FROM sesion_documentos WHERE sesion_id = $1', [currentSesionId]);
         if (req.body.documentos && idsDocumentosSeleccionados.length > 0) {
             const docValues = idsDocumentosSeleccionados.map(docId => `(${currentSesionId}, ${docId})`).join(',');
             await client.query(`INSERT INTO sesion_documentos (sesion_id, documento_id) VALUES ${docValues}`);
+            console.log(`🔗 ${idsDocumentosSeleccionados.length} documentos asociados.`);
+        } else {
+            console.log('🔗 No hay documentos para asociar.');
         }
 
         await client.query('COMMIT');
@@ -1371,27 +1388,31 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, corr
       reglamentos: proximaSesion.reglamentos || []
   };
 
-  let reglamentosHtml = '<li>Sin sugerencias</li>';
+  let reglamentosSugeridosHtml = '<p class="no-suggestions">Sin sugerencias de reglamentos.</p>'; // Valor por defecto
 
-  if (Array.isArray(sesionData.reglamentos) && sesionData.reglamentos.length > 0) {
-      reglamentosHtml = sesionData.reglamentos.map(r => {
-          if (r.esEnlace) {
-              return `
-                <li class="suggestion-item">
-                    <span>${r.texto}</span>
-                    <button class="btn btn-info btn-sm" onclick="viewPdf('${r.documento_id}', '${r.documento_titulo}')">Ver Documento</button>
-                </li>`;
-          } else {
-              return `<li class="suggestion-item text-only"><span>${r.texto}</span></li>`;
-          }
-      }).join('');
-  } 
-  // 2. Si no es un array, verificamos si es un string (el formato antiguo)
-  else if (typeof sesionData.reglamentos === 'string' && sesionData.reglamentos) {
-      console.warn("Advertencia: 'reglamentos' se está recibiendo como string, no como array. Mostrando en formato antiguo.");
-      reglamentosHtml = sesionData.reglamentos.split('|').map(r => `<li>${r}</li>`).join('');
+  // [NEW] 1. Prioridad: Intentar procesar como el NUEVO formato (array de grupos)
+  if (Array.isArray(sesionData.reglamentos) && sesionData.reglamentos.length > 0 && typeof sesionData.reglamentos[0] === 'object' && sesionData.reglamentos[0].sugerencias) {
+      reglamentosSugeridosHtml = sesionData.reglamentos.map(grupo => `
+          <div class="sugerencias-grupo">
+              <h5 class="fuente-documento">Sugerencias para: <strong>${grupo.documento_fuente_titulo}</strong></h5>
+              <ul>
+                  ${grupo.sugerencias.map(r => {
+                      if (r.esEnlace) {
+                          return `<li class="suggestion-item"><span>${r.texto}</span><button class="btn btn-info btn-sm" onclick="viewPdf('${r.documento_id}', '${r.documento_titulo}')">Ver Doc.</button></li>`;
+                      } else {
+                          return `<li class="suggestion-item text-only"><span>${r.texto}</span></li>`;
+                      }
+                  }).join('')}
+              </ul>
+          </div>
+      `).join('');
   }
-
+  // [NEW] 2. Fallback: Si no es el nuevo formato, intentar procesar como el ANTIGUO formato (string)
+  else if (typeof sesionData.reglamentos === 'string' && sesionData.reglamentos.trim()) {
+      console.warn("Advertencia: 'reglamentos' se está recibiendo como string. Mostrando en formato antiguo.");
+      reglamentosSugeridosHtml = `<ul>${sesionData.reglamentos.split('|').map(r => `<li class="suggestion-item text-only"><span>${r}</span></li>`).join('')}</ul>`;
+  }
+  
   const todosReglamentosHtml = todosLosReglamentos && todosLosReglamentos.length > 0
     ? todosLosReglamentos.map(reg => `
         <li class="sidebar-list-item">
@@ -1497,7 +1518,7 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, corr
                 margin-bottom: 2rem;
             }
             .detail-item {
-                background: rgba(255, 255, 255, 0.1);
+                rgba(255, 255, 255, 0.3)
                 padding: 1rem;
                 border-radius: 8px;
             }
@@ -1677,8 +1698,19 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, corr
                 <ul>${sesionData.documentos.length > 0 ? sesionData.documentos.map(d => `<li><a href="/api/documentos/${d.id}/download" target="_blank">${d.titulo}</a></li>`).join('') : '<li>No hay documentos adjuntos.</li>'}</ul>
 
                 <h4>Reglamentos y Resoluciones a Revisar</h4>
-                <ul>${reglamentosHtml}</ul>
+                <ul>${reglamentosSugeridosHtml}</ul>
             </div>
+
+              <div id="pdfModal" class="modal">
+                  <div class="modal-content-pdf">
+                      <div class="modal-header">
+                          <h2 id="pdfModalTitle">Previsualización</h2>
+                          <span class="close-pdf-modal" onclick="closePdfModal()">&times;</span>
+                      </div>
+                      <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
+                  </div>
+              </div>
+
         </main>
 
             <script>
@@ -1756,6 +1788,14 @@ function generateGestionSesionPage(sesion, documentos, docsAsociadosIds) {
                 .full-width { grid-column: 1 / -1; }
                 .checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; border: 1px solid #eee; padding: 10px; border-radius: 5px; }
                 .checkbox-group div { display: flex; align-items: center; }
+                /* [NEW] Style for the secondary button */
+                .cta-button.secondary {
+                    background-color: #6c757d; /* Grey color */
+                    margin-top: 10px; /* Space between buttons */
+                }
+                .cta-button.secondary:hover {
+                    background-color: #5a6268;
+                }
             </style>
         </head>
         
@@ -1770,8 +1810,8 @@ function generateGestionSesionPage(sesion, documentos, docsAsociadosIds) {
        
             <main class="container">
                 <h2 style="text-align: center;">Gestionar Próxima Sesión</h2>
-                 <form action="/api/sesion/update" method="POST" class="form-container">
-                    <input type="hidden" name="sesion_id" value="${sesion.id || ''}">
+                 <form action="/api/sesion/update" method="POST" id="sesionForm" class="form-container">
+                    <input type="hidden" name="sesion_id" id="sesion_id" value="${sesion.id || ''}">
                     
                     <div class="form-grid">
                         <div class="form-group">
@@ -1820,19 +1860,46 @@ function generateGestionSesionPage(sesion, documentos, docsAsociadosIds) {
                         
                         <div class="form-group full-width">
                             <label for="documentos">Documentos para la sesión (Ctrl+Click para selección múltiple):</label>
-                            <select name="documentos" multiple size="8">${documentosOptions}</select>
+                            <select name="documentos" id="documentos" multiple size="8">${documentosOptions}</select>
                         </div>
 
                         <div class="form-group full-width">
                             <label for="reglamentos">Reglamentos a revisar (Sugeridos por el sistema, uno por línea):</label>
-                            <textarea name="reglamentos" rows="3">${reglamentosGuardados.join('\n')}</textarea>
+                            <textarea name="reglamentos" id="reglamentos" rows="3">${reglamentosGuardados.join('\n')}</textarea>
                         </div>
                     </div>
 
                     <button type="submit" class="cta-button" style="width: 100%; margin-top: 20px;">Guardar Cambios y Sugerir Reglamentos</button>
+                    <button type="button" class="cta-button secondary" style="width: 100%;" onclick="prepararNuevaSesion()">Preparar Nueva Sesión</button>
                 </form>
             </main>
-        
+            <script>
+                function prepararNuevaSesion() {
+                    console.log('Preparando formulario para nueva sesión...');
+                    // Get the form element
+                    const form = document.getElementById('sesionForm');
+                    
+                    // Reset all form fields to default values
+                    form.reset(); 
+                    
+                    // Specifically clear the hidden session_id field
+                    document.getElementById('sesion_id').value = ''; 
+                    
+                    // Optional: Clear multi-select options if desired (uncomment if needed)
+                    // const docSelect = document.getElementById('documentos');
+                    // if (docSelect) {
+                    //     for (let i = 0; i < docSelect.options.length; i++) {
+                    //         docSelect.options[i].selected = false;
+                    //     }
+                    // }
+                    
+                    // Optional: Clear text areas if reset() doesn't do it reliably
+                    // document.getElementById('temas_nuevos').value = ''; // Assuming you have this ID
+                    // document.getElementById('reglamentos').value = ''; 
+                    
+                    alert('Formulario listo para crear una nueva sesión. Rellena los datos y guarda.');
+                }
+            </script>
         </body>
     </html>`;
 }

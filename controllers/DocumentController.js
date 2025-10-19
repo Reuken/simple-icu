@@ -1492,62 +1492,94 @@ static async getTodosLosReglamentos(req, res) {
 
   static async sugerirReglamentos(idsDeDocumentosDeSesion) {
     if (!idsDeDocumentosDeSesion || idsDeDocumentosDeSesion.length === 0) {
-        return [];
+        return []; // Return empty array if no document IDs provided
     }
     try {
         const params = idsDeDocumentosDeSesion.map((_, i) => `$${i + 1}`).join(',');
+        // [NEW] Fetch id and titulo along with analisis_nlp for context
         const documentosSesionResult = await query(
-            `SELECT analisis_nlp FROM documentos WHERE id IN (${params})`,
+            `SELECT id, titulo, analisis_nlp FROM documentos WHERE id IN (${params})`,
             idsDeDocumentosDeSesion
         );
 
         if (documentosSesionResult.rows.length === 0) { return []; }
         
-        // 1. Extraer todas las citas con la función mejorada (ver Petición 2)
-        let citasUnicas = new Set();
+        // [NEW] Intermediate structure to hold citations grouped by source document
+        const citasPorDocumentoFuente = [];
+        // [NEW] Set to collect all unique citations globally for a single DB lookup
+        const todasLasCitasUnicas = new Set();
+
+        // 1. Extract citations PER source document and collect unique citations globally
         documentosSesionResult.rows.forEach(doc => {
             const analisis = doc.analisis_nlp || {};
+            let citasDelDocumento = [];
             if (analisis.citas_reglamentos && Array.isArray(analisis.citas_reglamentos)) {
-                analisis.citas_reglamentos.forEach(cita => citasUnicas.add(cita));
+                // Ensure citations for this doc are unique *within this doc*
+                citasDelDocumento = [...new Set(analisis.citas_reglamentos)]; 
+                // Add these unique citations to the global set
+                citasDelDocumento.forEach(cita => todasLasCitasUnicas.add(cita));
+            }
+            
+            // [NEW] Store the citations associated with this source document if any were found
+            if (citasDelDocumento.length > 0) {
+                citasPorDocumentoFuente.push({
+                    documento_fuente_id: doc.id,
+                    documento_fuente_titulo: doc.titulo,
+                    citas_texto: citasDelDocumento // Store only the text initially
+                });
             }
         });
-        const citasArray = [...citasUnicas];
-        if (citasArray.length === 0) return [];
+        
+        // If no citations were found in any document, return early
+        if (todasLasCitasUnicas.size === 0) return []; 
 
-        // 2. Buscar en la DB documentos cuyo título coincida con las citas
-        const searchPatterns = citasArray.map(cita => `%${cita}%`);
+        // 2. Search DB for documents matching ANY of the unique citations found
+        const citasArrayGlobal = [...todasLasCitasUnicas];
+        const searchPatterns = citasArrayGlobal.map(cita => `%${cita}%`);
         const documentosEncontradosResult = await query(
             `SELECT id, titulo FROM documentos WHERE titulo ILIKE ANY($1)`,
             [searchPatterns]
         );
+        // Create a lookup map for found documents (lowercase key for case-insensitive matching)
         const mapaDocumentos = new Map(documentosEncontradosResult.rows.map(doc => [doc.titulo.toLowerCase(), doc]));
 
-        // 3. Construir el resultado final con información de enlace
-        const sugerencias = citasArray.map(cita => {
-            const docEncontrado = mapaDocumentos.get(cita.toLowerCase());
-            if (docEncontrado) {
-                return {
-                    texto: cita,
-                    esEnlace: true,
-                    documento_id: docEncontrado.id,
-                    documento_titulo: docEncontrado.titulo
-                };
-            } else {
-                return {
-                    texto: cita,
-                    esEnlace: false,
-                    documento_id: null,
-                    documento_titulo: null
-                };
-            }
+        // 3. Construct the final grouped result, enriching citations with link info
+        // [NEW] Map through the grouped structure created in step 1
+        const resultadoFinalAgrupado = citasPorDocumentoFuente.map(grupo => {
+            // Enrich each citation text with link details if found in the map
+            const sugerenciasEnriquecidas = grupo.citas_texto.map(citaTexto => {
+                const docEncontrado = mapaDocumentos.get(citaTexto.toLowerCase());
+                if (docEncontrado) {
+                    return {
+                        texto: citaTexto,
+                        esEnlace: true,
+                        documento_id: docEncontrado.id,
+                        documento_titulo: docEncontrado.titulo
+                    };
+                } else {
+                    return {
+                        texto: citaTexto,
+                        esEnlace: false,
+                        documento_id: null,
+                        documento_titulo: null
+                    };
+                }
+            });
+            // Return the final object for this source document group
+            return {
+                documento_fuente_id: grupo.documento_fuente_id,
+                documento_fuente_titulo: grupo.documento_fuente_titulo,
+                sugerencias: sugerenciasEnriquecidas // The enriched list of suggestions
+            };
         });
 
-        console.log(`✅ Sugerencias enriquecidas generadas: ${sugerencias.length}`);
-        return sugerencias;
+        console.log(`✅ Sugerencias agrupadas y enriquecidas generadas para ${resultadoFinalAgrupado.length} documentos fuente.`);
+        return resultadoFinalAgrupado; // Return the grouped structure
 
     } catch (error) {
         console.error('❌ Error crítico al sugerir reglamentos:', error);
-        return [{ texto: 'Error al procesar sugerencias', esEnlace: false, documento_id: null, documento_titulo: null }];
+        // Return an empty array in case of error to prevent breaking the page
+        return []; 
     }
 }
 

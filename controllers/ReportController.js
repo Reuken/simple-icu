@@ -882,6 +882,7 @@ class ReportController {
                  JOIN sesion_documentos sd ON d.id = sd.documento_id
                  WHERE sd.sesion_id = s.id AND d.categoria = 'Resolucion') as resoluciones
             FROM sesiones s
+            WHERE s.fecha <= CURRENT_DATE
             ORDER BY s.fecha DESC, s.hora DESC
             LIMIT 5
         `);
