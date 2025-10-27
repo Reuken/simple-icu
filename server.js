@@ -309,6 +309,12 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           </a>
         `;
 
+    const infGestionHtml = `
+          <a href="https://drive.google.com/drive/folders/1Rc2h9llNWZV_5O0wQ2gl4DxmLx7vQzuq?usp=sharing" target="_blank" class="gaceta-link">
+              <span>📜 Informes de Gestion - ICU</span>
+          </a>
+        `;
+
     // Enviar la página rediseñada
     res.send(`
       <!DOCTYPE html>
@@ -495,9 +501,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
           <nav>
               <a href="/dashboard" class="logo">ICU Dashboard</a>
               <div class="nav-links">
-                  <a href="/dashboard">Dashboard</a>
-                  <span class="user-info-nav">👤 ${usuario.nombre}</span>
-                  <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                  <span class="active">👤 ${usuario.nombre}</span>
+                  <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
               </div>
           </nav>
 
@@ -523,6 +528,7 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                           ${comisionesHtml}
                       </div>
                         ${gacetaHtml}
+                        ${infGestionHtml}
                   </div>
 
                     <div class="dashboard-column">
@@ -667,13 +673,17 @@ app.get('/usuarios', requireAuth, requireRole(['administrativo', 'superadmin']),
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 20; // O el límite que prefieras
+        const searchTerm = req.query.search || '';
         
         const usuariosData = await SistemaUsuarios.getAllUsers({
             page,
             limit,
-            includeInactive: true 
+            search: searchTerm,
+            includeInactive: true
         });
 
+        usuariosData.search = searchTerm;
+        
         const facultades = await Facultad.getAll();
 
         if (req.session.usuario.tipo_usuario === 'administrativo') {
@@ -683,6 +693,7 @@ app.get('/usuarios', requireAuth, requireRole(['administrativo', 'superadmin']),
         // Pasamos el objeto 'usuariosData' completo y las facultades
         res.send(generateUsuariosPage(usuariosData, facultades, req.session.usuario));
     } catch (error) {
+        console.error('❌ Error detailed in /usuarios route:', error);
         res.status(500).send("Error al cargar la página de usuarios.");
     }
 });
@@ -692,9 +703,11 @@ app.post('/api/usuarios/add', requireAuth, requireRole(['superadmin']), async (r
     try {
         const { nombre, codigo, email, contrasena, tipo_usuario, facultad_id, gestion, es_estudiante, es_docente, funcion } = req.body;
 
-        // Hashear contraseña (si usas bcrypt en producción, mantenlo)
-        // const salt = await bcrypt.genSalt(10);
-        // const hashedContrasena = await bcrypt.hash(contrasena, salt);
+       if (tipo_usuario === 'administrativo' && (!gestion || gestion.trim() === '')) {
+            console.error('Validation Error: El campo "gestion" es obligatorio para usuarios administrativos.');
+            // Send a user-friendly error back
+            return res.status(400).send('Error al crear el usuario: El campo "Gestión" es obligatorio para usuarios administrativos.'); 
+        }
 
         // Construimos el objeto 'userData' que la clase Usuario.create espera
         const userData = {
@@ -705,7 +718,7 @@ app.post('/api/usuarios/add', requireAuth, requireRole(['superadmin']), async (r
             tipo_usuario,
             // Datos específicos del rol
             facultad_id: tipo_usuario === 'consejero' ? parseInt(facultad_id) : null,
-            gestion: gestion || null,
+            gestion: gestion,
             es_estudiante: tipo_usuario === 'consejero' ? es_estudiante === 'on' : false,
             es_docente: tipo_usuario === 'consejero' ? es_docente === 'on' : false,
             es_directiva: false, // Asumimos que no se crea como directiva desde este form.
@@ -719,7 +732,14 @@ app.post('/api/usuarios/add', requireAuth, requireRole(['superadmin']), async (r
         res.redirect('/usuarios');
     } catch (error) {
         console.error('Error al añadir usuario:', error);
-        res.status(500).send('Error al crear el usuario. Verifique que el código y el email no estén ya registrados.');
+        // Improved error handling based on DB codes
+        if (error.code === '23505') { // Unique constraint violation
+            res.status(400).send('Error al crear el usuario: El código o email ya está registrado.');
+        } else if (error.code === '23502') { // Not-null violation (should now be caught by validation)
+             res.status(400).send(`Error al crear el usuario: Falta un campo obligatorio (${error.column || 'desconocido'}).`);
+        } else {
+            res.status(500).send('Error interno al crear el usuario.');
+        }
     }
 });
 
@@ -1057,8 +1077,35 @@ function generateUsuariosPage(data, facultades, usuario) {
     // [NUEVO] Separar usuarios en activos e inactivos
     const usuariosActivos = usuarios.filter(u => u.es_activo);
     const usuariosInactivos = usuarios.filter(u => !u.es_activo);
+    const currentPage = data.page || 1;
+    const totalPages = data.totalPages || 1; 
+    const currentSearch = data.search || '';
 
     let facultadesOptions = facultades.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('');
+
+   let paginationHtml = '';
+      if (totalPages > 1) { 
+
+        const generatePageLink = (page) => {
+            const params = new URLSearchParams({ page });
+            if (currentSearch) {
+                params.set('search', currentSearch);
+            }
+            return `/usuarios?${params.toString()}`;
+        };
+
+        paginationHtml = `
+      <div class="pagination-controls">
+        <a href="${generatePageLink(currentPage - 1)}" class="cta-button pagination-btn ${currentPage === 1 ? 'disabled' : ''}" ${currentPage === 1 ? 'aria-disabled="true" tabindex="-1"' : ''}>
+          &laquo; Anterior
+        </a>
+        <span>Página ${currentPage} de ${totalPages}</span>
+        <a href="${generatePageLink(currentPage + 1)}" class="cta-button pagination-btn ${currentPage === totalPages ? 'disabled' : ''}" ${currentPage === totalPages ? 'aria-disabled="true" tabindex="-1"' : ''}>
+          Siguiente &raquo;
+        </a>
+      </div>
+    `;
+    }
 
   // [NUEVO] El formulario de creación solo se genera si el usuario tiene el permiso
   const formularioCrearUsuario = `
@@ -1072,16 +1119,26 @@ function generateUsuariosPage(data, facultades, usuario) {
             <div class="form-group"><label for="contrasena">Contraseña:</label><input type="password" id="contrasena" name="contrasena" required></div>
             <div class="form-group full-width">
                 <label for="tipo_usuario">Tipo de Usuario:</label>
-                <select id="tipo_usuario" name="tipo_usuario" onchange="toggleConsejeroFields()" required>
+                <select id="tipo_usuario" name="tipo_usuario" onchange="toggleFields()" required>
                     <option value="consejero">Consejero</option>
                     <option value="administrativo">Administrativo</option>
                     <option value="superadmin">Superadmin</option>
                 </select>
             </div>
+            
+            <div class="form-group admin-field" style="display:none;">
+            <label for="gestion">Gestión:</label>
+            <input type="text" id="gestion" name="gestion" placeholder="Ej: 2024-2026">
+            </div>
+
+            <div class="form-group admin-field" style="display:none;">
+                <label for="funcion">Función:</label>
+                <input type="text" id="funcion" name="funcion" placeholder="Ej: Auxiliar Administrativo">
+            </div>
+
             <div id="consejero-fields" class="full-width" style="display:none;">
                 <div class="form-grid">
                     <div class="form-group"><label for="facultad_id">Facultad:</label><select id="facultad_id" name="facultad_id">${facultadesOptions}</select></div>
-                    <div class="form-group"><label for="gestion">Gestión:</label><input type="text" id="gestion" name="gestion" placeholder="Ej: 2024-2026"></div>
                     <div class="form-group checkbox-group">
                         <div><input type="checkbox" id="es_estudiante" name="es_estudiante"><label for="es_estudiante">Es Estudiante</label></div>
                         <div><input type="checkbox" id="es_docente" name="es_docente"><label for="es_docente">Es Docente</label></div>
@@ -1154,14 +1211,14 @@ function generateUsuariosPage(data, facultades, usuario) {
       </head>
       <body>
           <nav>
-              <a href="/dashboard" class="logo">ICU Dashboard</a>
+              <a href="/dashboard" class="logo">Ilustre Consejo Universitario</a>
               <div class="nav-links">
-                  <a href="/dashboard">Dashboard</a>
+                  <a href="/dashboard">🖥️ Dashboard</a>
                   <a href="/usuarios" class="active">👥 Usuarios</a>
                   <a href="/facultades">🏛️ Facultades</a>
                   <a href="/comisiones">📋 Comisiones</a>
                   <a href="/documentos">📄 Documentos</a>
-                  <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                  <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
               </div>
           </nav>
 
@@ -1174,6 +1231,10 @@ function generateUsuariosPage(data, facultades, usuario) {
             ${permisos.crear_usuarios ? formularioCrearUsuario : ''}
 
             <div class="info-card">
+                <div class="search-controls">
+                    <input type="search" id="user-search" placeholder="Buscar por nombre, código o email..." value="${currentSearch}">
+                    <button class="cta-button" onclick="performSearch()">Buscar</button>
+                </div>
                 <div class="tabs">
                     <button class="tab-button active" onclick="openTab(event, 'activos')">Usuarios Activos (${usuariosActivos.length})</button>
                     <button class="tab-button" onclick="openTab(event, 'inactivos')">Usuarios Inactivos (${usuariosInactivos.length})</button>
@@ -1214,6 +1275,7 @@ function generateUsuariosPage(data, facultades, usuario) {
                         </table>
                     </div>
                 </div>
+                ${paginationHtml}
             </div>
         </main>
 
@@ -1237,6 +1299,19 @@ function generateUsuariosPage(data, facultades, usuario) {
               </div>
 
               <script>
+          
+          function performSearch() {
+                const searchTerm = document.getElementById('user-search').value;
+                // Redirect to the first page with the search term
+                window.location.href = \`/usuarios?page=1&search=\${encodeURIComponent(searchTerm)}\`;
+            }
+
+            document.getElementById('user-search')?.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
 
           // Script para manejar las pestañas
           function openTab(evt, tabName) {
@@ -1257,10 +1332,33 @@ function generateUsuariosPage(data, facultades, usuario) {
               document.getElementById('activos').style.display = 'block';
           });
 
-          function toggleConsejeroFields() {
-            const tipo = document.getElementById('tipo_usuario').value;
-            document.getElementById('consejero-fields').style.display = tipo === 'consejero' ? 'block' : 'none';
-          }
+          function toggleFields() {
+                  const tipoUsuario = document.getElementById('tipo_usuario').value;
+                  const consejeroFields = document.getElementById('consejero-fields');
+                  // Selecciona TODOS los elementos con la clase 'admin-field'
+                  const adminFields = document.querySelectorAll('.admin-field'); 
+
+                  if (tipoUsuario === 'consejero') {
+                      consejeroFields.style.display = 'block'; // Muestra campos de consejero
+                      adminFields.forEach(field => field.style.display = 'none'); // Oculta campos de admin
+                  } else if (tipoUsuario === 'administrativo' || tipoUsuario === 'superadmin') {
+                      consejeroFields.style.display = 'none'; // Oculta campos de consejero
+                      adminFields.forEach(field => field.style.display = 'flex'); // Muestra campos de admin (usamos 'flex' porque son .form-group)
+                  } else {
+                      // Ocultar todo si no se selecciona nada específico (poco probable con <select>)
+                      consejeroFields.style.display = 'none';
+                      adminFields.forEach(field => field.style.display = 'none');
+                  }
+              }
+
+              // [NUEVO] Llama a la función una vez al cargar la página para establecer el estado inicial
+              document.addEventListener('DOMContentLoaded', () => {
+                  // ... tu código existente para mostrar la pestaña 'activos' ...
+                  document.getElementById('activos').style.display = 'block'; 
+                  
+                  // Llama a toggleFields para ajustar la visibilidad inicial del formulario de creación
+                  toggleFields(); 
+              });
           function openEditModal(user) {
             document.getElementById('editForm').action = '/api/usuarios/edit/' + user.id;
             document.getElementById('edit-id').value = user.id;
@@ -1302,17 +1400,17 @@ function generateComisionesPage(comisiones) {
   `).join('');
 
   return `
-    <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Comisiones</title><link rel="stylesheet" href="/estilos.css"></head>
+    <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Conformacion de Comisiones</title><link rel="stylesheet" href="/estilos.css"></head>
     <body>
       <nav>
-            <a href="/dashboard" class="logo">ICU Dashboard</a>
+            <a href="/dashboard" class="logo">Ilustre Consejo Universitario</a>
             <div class="nav-links">
-                <a href="/dashboard">Dashboard</a>
-                <a href="/usuarios" class="active">👥 Usuarios</a>
-                <a href="/facultades">🏛️ Facultades</a>
-                <a href="/comisiones">📋 Comisiones</a>
+                <a href="/dashboard">🖥️ Dashboard</a>
+                <a href="/usuarios">👥 Usuarios</a>
+                <a href="/facultades">🏛️ Facultades</a> 
                 <a href="/documentos">📄 Documentos</a>
-                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                <a href="/comisiones" class="active">📋 Comisiones</a>
+                <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
             </div>
         </nav>
       <main><div class="comision-grid-container">
@@ -1346,19 +1444,19 @@ function generateFacultadesPage(facultades) {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Gestión de Facultades - ICU</title>
+        <title>Representantes por Facultades - ICU</title>
         <link rel="stylesheet" href="/estilos.css">
     </head>
     <body>
         <nav>
-            <a href="/dashboard" class="logo">ICU Dashboard</a>
+            <a href="/dashboard" class="logo">Ilustre Consejo Universitario</a>
             <div class="nav-links">
-                <a href="/dashboard">Dashboard</a>
+                <a href="/dashboard">🖥️ Dashboard</a>
                 <a href="/usuarios">👥 Usuarios</a>
-                <a href="/facultades" class="active">🏛️ Facultades</a>
                 <a href="/comisiones">📋 Comisiones</a>
                 <a href="/documentos">📄 Documentos</a>
-                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                <a href="/facultades" class="active">🏛️ Facultades</a>
+                <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
             </div>
         </nav>
 
@@ -1435,7 +1533,7 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, corr
     <head>
         <meta charset="UTF-8">  
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mi Espacio - ICU</title>
+        <title>Mi Espacio ICU</title>
         <link rel="stylesheet" href="/estilos.css">
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
         <style>
@@ -1639,11 +1737,15 @@ function generateMiEspacioPage(usuario, proximaSesion, todosLosReglamentos, corr
     </head>
     <body>
         <nav>
-            <a href="/dashboard" class="logo">ICU Dashboard</a>
+            <a href="/dashboard" class="logo">Ilustre Consejo Universitario</a>
             <div class="nav-links">
-                <a href="/dashboard">Dashboard</a>
+                  <a href="/dashboard">🖥️ Dashboard</a>
+                  <a href="/facultades">🏛️ Facultades</a>
+                  <a href="/comisiones">📋 Comisiones</a>
+                  <a href="/documentos">📄 Documentos</a>
+                  <a href="/usuarios" >👥 Usuarios</a>
                 <span class="user-info-nav">👤 ${usuario.nombre}</span>
-                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
             </div>
         </nav>
 
@@ -1801,10 +1903,14 @@ function generateGestionSesionPage(sesion, documentos, docsAsociadosIds) {
         
         <body>
           <nav>
-            <a href="/dashboard" class="logo">ICU Dashboard</a>
+            <a href="/dashboard" class="logo">Ilustre Consejo Universitario</a>
             <div class="nav-links">
-                <a href="/dashboard">Dashboard</a>
-                <a href="/logout" class="logout-btn">Cerrar Sesión</a>
+                  <a href="/dashboard">🖥️ Dashboard</a>
+                  <a href="/facultades">🏛️ Facultades</a>
+                  <a href="/comisiones">📋 Comisiones</a>
+                  <a href="/documentos">📄 Documentos</a>
+                  <a href="/reportes">📊 Reportes</a>
+                <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
             </div>
           </nav>
        
@@ -1955,16 +2061,15 @@ async function startServer() {
       console.log(`📊 Dashboard: http://localhost:${port}/dashboard`);
       console.log(`👥 Usuarios: http://localhost:${port}/usuarios`);
       console.log(`📄 Documentos: http://localhost:${port}/documentos`);
-      console.log(`🏛️  Comisiones: http://localhost:${port}/comisiones`);
+      console.log(`🏛️ Comisiones: http://localhost:${port}/comisiones`);
       console.log(`📊 Reportes: http://localhost:${port}/reportes`);
       console.log(`🎓 Facultades: http://localhost:${port}/facultades`);
-      console.log(`_._ Mi Espacio: http://localhost:${port}/mi_espacio`);
       
       console.log('\n=== PERMISOS DEL SISTEMA ===');
-      console.log('👑 Administrativos: Acceso total (crear, editar, eliminar)');
-      console.log('👁️  Consejeros: Solo lectura (ver documentos, comisiones, facultades, reportes)');
+      console.log('👑 Administrativos: Acceso total');
+      console.log('👁️  Consejeros: Solo lectura');
       
-      console.log('\n✅ Sistema ICU con permisos listo');
+      console.log('\n✅ Sistema ICU iniciado');
     });
   } catch (error) {
     console.error('❌ Error iniciando servidor:', error.message);

@@ -64,6 +64,25 @@ nav .nav-links a:hover {
                   display: inline-block;
 }
 
+nav .nav-links a.active {
+  color: #007BFF; /* Use the primary blue color for the text */
+  font-weight: 700; /* Make it slightly bolder */
+  /* Optional: Add a subtle bottom border */
+  border-bottom: 2px solid #007BFF; 
+  padding-bottom: 2px; /* Adjust padding if using border */
+}
+
+/* Optional: Prevent hover effect on the active link if desired */
+nav .nav-links a.active:hover {
+  background-color: transparent; /* Keep background transparent */
+  color: #0056b3; /* Maybe slightly darken the blue on hover */
+  border: none; /* Remove the hover border */
+  border-bottom: 2px solid #0056b3; /* Keep/darken the bottom border */
+  padding: inherit; /* Reset padding to default link padding */
+  padding-bottom: 2px; /* Keep bottom padding for border */
+  cursor: default; /* Indicate it's the current page */
+}
+
 /* Títulos y Texto */
 h1 {
     color: #333;
@@ -606,6 +625,27 @@ main {
     background-color: #f8f8f8;
     border-radius: 8px;
 }
+
+ .pagination-controls span {
+                  font-weight: 500;
+                  color: #555;
+              }
+
+                .pagination-btn {
+                  padding: 10px 20px !important; /* Adjust padding */
+                  font-size: 0.95rem !important; /* Adjust font size */
+                  width: auto !important; /* Override full width */
+                  text-decoration: none; /* Remove underline from link */
+                  line-height: 1.5; /* Ensure text fits */
+              }
+              .pagination-btn.disabled {
+                  background-color: #ccc;
+                  color: #777;
+                  cursor: not-allowed;
+                  pointer-events: none; /* Make it unclickable */
+                  transform: none; /* Disable hover effect */
+              }
+
 .pagination-controls button {
     padding: 10px 20px;
     background-color: #333;
@@ -658,6 +698,28 @@ main {
 .search-filter-controls button.cta-button:hover {
     background-color: #0056b3;
 }
+
+.search-controls {
+                  display: flex;
+                  gap: 10px;
+                  margin-bottom: 1.5rem; /* Space below search */
+                  align-items: center;
+              }
+              .search-controls input[type="search"] {
+                  flex-grow: 1; /* Take available space */
+                  padding: 10px 15px;
+                  border: 1px solid #ccc;
+                  border-radius: 6px;
+                  font-size: 1rem;
+              }
+              .search-controls .cta-button {
+                  padding: 10px 20px !important; /* Match input height */
+                  margin-top: 0 !important; /* Remove top margin */
+                  width: auto !important; /* Specific width */
+                  font-size: 0.95rem !important;
+              }
+
+
 
 /* Botones de acción en la tabla */
 .action-buttons {

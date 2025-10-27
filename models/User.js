@@ -274,14 +274,31 @@ class Usuario {
 class SistemaUsuarios {
   // Obtener todos los usuarios con paginación
   static async getAllUsers(options = {}) {
-    const { page = 1, limit = 20, includeInactive = false } = options;
+    const { page = 1, limit = 20, includeInactive = false, search = '' } = options;
     const offset = (page - 1) * limit;
 
     // Condición 'WHERE' dinámica
     let whereClause = '';
+    const searchParams = [];
+     let paramIndex = 1;
+
     if (!includeInactive) {
         whereClause = 'WHERE u.es_activo = true';
+    } else {
+        whereClause = `WHERE 1 = 1`;
     }
+
+    if (search && search.trim() !== '') {
+        // Add AND to connect conditions
+        whereClause += ` AND (u.nombre ILIKE $${paramIndex} OR u.email ILIKE $${paramIndex + 1} OR CAST(u.codigo AS TEXT) ILIKE $${paramIndex + 2})`;
+        searchParams.push(`%${search}%`); // $1
+        searchParams.push(`%${search}%`); // $2
+        searchParams.push(`%${search}%`); // $3
+        paramIndex += 3; // Now paramIndex is 4 (ready for LIMIT/OFFSET placeholders)
+    } 
+    
+    const mainQueryParams = [...searchParams, limit, offset];
+    const countQueryParams = [...searchParams];
 
     const queryText = `
         SELECT 
@@ -298,14 +315,24 @@ class SistemaUsuarios {
         LEFT JOIN facultades f ON ci.facultad_id = f.id
         ${whereClause}
         ORDER BY u.nombre
-        LIMIT $1 OFFSET $2
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    const countQuery = `SELECT COUNT(*) FROM usuarios u ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) FROM usuarios u 
+        LEFT JOIN consejeros_icu ci ON u.id = ci.usuario_id
+        LEFT JOIN administrativos a ON u.id = a.usuario_id
+        ${whereClause}`;
 
-    const result = await query(queryText, [limit, offset]);
-    const countResult = await query(countQuery);
-    const total_usuarios = parseInt(countResult.rows[0].count);
+    try {
+        // --- 👇 CORRECTED QUERY CALLS ---
+        console.log("Executing main query with params:", mainQueryParams);
+        const result = await query(queryText, mainQueryParams);
+
+        console.log("Executing count query with params:", countQueryParams);
+
+        const countResult = await query(countQuery, countQueryParams);
+        const total_usuarios = parseInt(countResult.rows[0].count);
+
 
     return {
         usuarios: result.rows,
@@ -313,6 +340,13 @@ class SistemaUsuarios {
         page: page,
         totalPages: Math.ceil(total_usuarios / limit)
     };
+    } catch (error) {
+        console.error("❌ Error executing query. Query Text:", queryText.substring(0, 300) + "...");
+        console.error("❌ Parameters attempted (main):", mainQueryParams); 
+        console.error("❌ Parameters attempted (count):", countQueryParams); 
+        console.error("❌ Original Error:", error);
+        throw error;
+    }
 }
 
   // Obtener estadísticas del sistema
