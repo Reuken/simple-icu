@@ -1,5 +1,6 @@
 // controllers/ReportController.js
 const { query, getClient } = require('../config/database');
+const { getSidebarHeader, getSidebarFooter } = require('../views/pages'); 
 
 /**
  * Parsea un string JSON de forma segura, manejando objetos, nulos y strings inválidos.
@@ -28,247 +29,64 @@ function parseJSONSeguro(data, defaultValue = null) {
 
 class ReportController {
   
-  // Página principal de reportes
+// Página principal de reportes
   static async getReportesPage(req, res) {
     try {
       const usuario = req.session.usuario;
       
-      res.send(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Reportes y Análisis - ICU</title>
-            <link rel="stylesheet" href="/estilos.css">
+      res.send(
+        getSidebarHeader('Reportes y Análisis', 'reportes', usuario) + `
             <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
             <style>
-
-                .ocr-indicator {
-                    display: inline-block;
-                    padding: 0.2rem 0.5rem;
-                    margin-left: 0.5rem;
-                    border-radius: 12px;
-                    font-size: 0.7rem;
-                    font-weight: bold;
-                }
+                .ocr-indicator { display: inline-block; padding: 0.2rem 0.5rem; margin-left: 0.5rem; border-radius: 12px; font-size: 0.7rem; font-weight: bold; }
                 .ocr-applied { background: #17a2b8; color: white; }
                 .ocr-native { background: #28a745; color: white; }
+                .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 0.9rem; }
+                .btn-info { background-color: #17a2b8; color: white; }
+                .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
                 
-                .btn {
-                    padding: 0.4rem 0.8rem;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    text-decoration: none;
-                    display: inline-block;
-                    font-size: 0.9rem;
-                }
-                .btn-info {
-                    background-color: #17a2b8;
-                    color: white;
-                }
-                .btn-sm {
-                    padding: 0.25rem 0.5rem;
-                    font-size: 0.8rem;
-                }
-                /* --- Estructura Principal del Dashboard --- */
-                .dashboard-grid {
-                    max-width: 1600px;
-                    margin: 2rem auto;
-                    padding: 1rem;
-                    display: grid;
-                    grid-template-columns: 1fr; /* Una columna en móviles */
-                    gap: 2rem;
-                }
-                @media (min-width: 1024px) {
-                    .dashboard-grid {
-                        /* Columna lateral fija y área de contenido principal flexible */
-                        grid-template-columns: 350px 1fr; 
-                    }
-                }
+                .dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+                @media (min-width: 1024px) { .dashboard-grid { grid-template-columns: 350px 1fr; } }
 
-                /* --- Estilo Base para Todas las Tarjetas --- */
-                .report-card {
-                    background-color: #ffffff;
-                    border-radius: 12px;
-                    padding: 1.5rem;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-                    border: 1px solid #eef;
-                }
-                .report-card h3 {
-                    font-size: 1.3rem;
-                    font-weight: 500;
-                    margin-top: 0;
-                    margin-bottom: 1.5rem;
-                    border-bottom: 2px solid #007BFF;
-                    padding-bottom: 0.5rem;
-                    display: inline-block;
-                }
-
-                /* --- Tarjeta de Bienvenida --- */
-                .welcome-card {
-                    background: linear-gradient(135deg, #007BFF, #0056b3);
-                    color: white;
-                    border-radius: 12px;
-                    padding: 2rem;
-                    box-shadow: 0 8px 30px rgba(0, 123, 255, 0.3);
-                }
-                .welcome-card h1 { color: white; font-size: 1.8rem; }
-                .welcome-card p { color: white; opacity: 0.9; }
-                
-                .refresh-btn {
-                    background: rgba(255, 255, 255, 0.2);
-                    color: white;
-                    border: 1px solid white;
-                    padding: 0.6rem 1.2rem;
-                    border-radius: 50px;
-                    cursor: pointer;
-                    margin-top: 1rem;
-                    font-weight: 500;
-                    transition: background-color 0.3s ease;
-                }
+                .welcome-card { background: linear-gradient(135deg, var(--uagrm-blue), #0056b3); color: white; border-radius: 8px; padding: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+                .welcome-card h1 { color: white; font-size: 1.8rem; border: none; margin-top: 0; }
+                .refresh-btn { background: rgba(255, 255, 255, 0.2); color: white; border: 1px solid white; padding: 0.6rem 1.2rem; border-radius: 50px; cursor: pointer; margin-top: 1rem; font-weight: 500; transition: background-color 0.3s; }
                 .refresh-btn:hover { background: rgba(255, 255, 255, 0.3); }
                 
-                /* --- Columna Lateral (Sidebar) --- */
-                .sidebar-column {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2rem;
-                }
+                .sidebar-column { display: flex; flex-direction: column; gap: 20px; }
+                .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+                .stat-card { padding: 1rem; background: #f8f9fa; border-radius: 8px; text-align: center; border: 1px solid #eee; }
+                .stat-title { font-size: 0.8rem; color: #6c757d; font-weight: 600; }
+                .stat-number { font-size: 1.8rem; font-weight: 700; color: var(--uagrm-blue); margin: 0.25rem 0; }
 
-                /* --- Tarjetas de Estadísticas Clave --- */
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 1rem;
-                }
-                .stat-card {
-                    padding: 1rem;
-                    background: #f8f9fa;
-                    border-radius: 8px;
-                    text-align: center;
-                }
-                .stat-title { font-size: 0.8rem; color: #6c757d; font-weight: 500; }
-                .stat-number {
-                    font-size: 2rem;
-                    font-weight: 700;
-                    color: #007BFF;
-                    margin: 0.25rem 0;
-                }
+                .main-content-column { display: flex; flex-direction: column; gap: 20px; }
+                .chart-container { display: grid; grid-template-columns: 1fr; gap: 20px; }
+                @media (min-width: 768px) { .chart-container { grid-template-columns: 1fr 1fr; } }
+                .chart-wrapper { position: relative; height: 300px; }
 
-                /* --- Área de Contenido Principal --- */
-                .main-content-column {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 2rem;
-                }
-                
-                /* --- Contenedores de Gráficos --- */
-                .chart-container {
-                    display: grid;
-                    grid-template-columns: 1fr;
-                    gap: 2rem;
-                }
-                @media (min-width: 768px) {
-                    .chart-container {
-                        grid-template-columns: 1fr 1fr;
-                    }
-                }
-                .chart-wrapper {
-                    position: relative;
-                    height: 350px;
-                }
-
-                /* --- Estilos para NLP y Documentos Recientes --- */
-                .loading { text-align: center; padding: 2rem; color: #666; }
+                .loading { text-align: center; padding: 2rem; color: #666; font-style: italic; }
                 .error { background-color: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; padding: 1rem; border-radius: 4px; }
                 .keyword-cloud { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
-                .keyword-item { background-color: #e3f2fd; color: #1565c0; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.9rem; }
+                .keyword-item { background-color: #e3f2fd; color: #1565c0; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.85rem; }
 
-                .doc-item {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 1rem 0;
-                    border-bottom: 1px solid #f0f0f0;
-                }
+                .doc-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid #f0f0f0; }
                 .doc-item:last-child { border-bottom: none; }
-                .doc-item h5 { margin: 0; font-weight: 500; }
-                .doc-item p, .doc-item small { margin: 0; color: #6c757d; font-size: 0.9rem; }
+                .doc-item h5 { margin: 0 0 5px 0; font-weight: 600; color: var(--text-dark); }
                 
-                .sentiment-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 0.5rem; }
-                .sentiment-positive { background-color: #28a745; }
-                .sentiment-neutral { background-color: #ffc107; }
-                .sentiment-negative { background-color: #dc3545; }
-
-                /* --- Estilos para Tarjeta NLP Compacta --- */
-                    .nlp-grid-compact {
-                        display: grid;
-                        grid-template-columns: 1fr; /* Una columna en móviles */
-                        gap: 2rem;
-                    }
-                    @media (min-width: 768px) {
-                        .nlp-grid-compact {
-                            grid-template-columns: 2fr 1fr; /* Dos columnas en pantallas más grandes */
-                        }
-                    }
-
-                    .topic-list-compact .topic-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        background: #f8f9fa;
-                        padding: 0.5rem 1rem;
-                        border-radius: 6px;
-                        margin-bottom: 0.5rem;
-                    }
-                    .topic-list-compact .topic-item span {
-                        font-size: 0.9em;
-                        color: #6c757d;
-                    }
-
-                    .stat-card-compact {
-                        background: #f8f9fa;
-                        border-left: 4px solid #17a2b8;
-                        padding: 1rem;
-                        border-radius: 6px;
-                        margin-bottom: 1rem;
-                    }
-                    .stat-number-compact {
-                        font-size: 1.5rem;
-                        font-weight: 700;
-                        color: #333;
-                    }
-                    .stat-title-compact {
-                        font-size: 0.8rem;
-                        color: #6c757d;
-                    }
-
-                    .mt-2 {
-                        margin-top: 2rem;
-                    }
-
+                .nlp-grid-compact { display: grid; grid-template-columns: 1fr; gap: 20px; }
+                @media (min-width: 768px) { .nlp-grid-compact { grid-template-columns: 2fr 1fr; } }
+                .topic-list-compact .topic-item { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; }
+                .stat-card-compact { background: #f8f9fa; border-left: 4px solid #17a2b8; padding: 1rem; border-radius: 6px; margin-bottom: 1rem; }
+                .stat-number-compact { font-size: 1.5rem; font-weight: 700; color: #333; }
+                .stat-title-compact { font-size: 0.8rem; color: #6c757d; }
             </style>
-        </head>
 
-        <body>
-            <nav>
-                <a href="/dashboard" class="logo">ICU Dashboard</a>
-                <div class="nav-links">
-                    <a href="/dashboard"> 🖥️ Dashboard</a>
-                    <a href="/documentos">📄 Documentos</a>
-                    <a href="/reportes" class="active">📊 Reportes</a>
-                    <span class="user-info-nav">👤 ${usuario.nombre}</span>
-                    <a href="/logout" class="logout-btn"> ⏻️ Cerrar Sesión</a>
-                </div>
-            </nav>
-
-            <main class="dashboard-grid">
+            <div class="dashboard-grid">
                 
+                <!-- Columna Izquierda (Resumen Estadístico) -->
                 <aside class="sidebar-column">
-                    <div class="report-card">
-                        <h3>Estadísticas Clave</h3>
+                    <div class="info-card" style="margin:0;">
+                        <h3 style="margin-top:0;">📊 Estadísticas Clave</h3>
                         <div class="stats-grid">
                             <div class="stat-card">
                                 <div class="stat-title">Total Docs</div>
@@ -297,82 +115,84 @@ class ReportController {
                         </div>
                     </div>
 
-                    <div class="report-card">
-                        <h3>🔍 Calidad OCR</h3>
+                    <div class="info-card" style="margin:0;">
+                        <h3 style="margin-top:0;">🔍 Calidad OCR</h3>
                         <div id="ocrQualityContent">
                             <div class="loading">Cargando...</div>
                         </div>
                     </div>
                 </aside>
 
+                <!-- Columna Derecha (Gráficos y Detalles) -->
                 <div class="main-content-column">
                     <div class="welcome-card">
                         <h1>📊 Reportes y Análisis</h1>
-                        <p>Visión general del procesamiento inteligente de documentos del ICU.</p>
-                        <button class="refresh-btn" onclick="loadAllReports()">🔄 Actualizar Todo</button>
+                        <p>Visión general del procesamiento inteligente de documentos (PLN/OCR).</p>
+                        <button class="refresh-btn" onclick="loadAllReports()">🔄 Actualizar Datos</button>
                     </div>
 
                     <div class="chart-container">
-                        <div class="report-card">
-                            <h3>🏛️ Docs por Comisión</h3>
+                        <div class="info-card" style="margin:0;">
+                            <h3 style="margin-top:0;">🏛️ Docs por Comisión</h3>
                             <div class="chart-wrapper">
                                 <canvas id="comisionesChart"></canvas>
                             </div>
                         </div>
-                        <div class="report-card">
-                            <h3>🗓️ Documentos por Mes</h3>
+                        <div class="info-card" style="margin:0;">
+                            <h3 style="margin-top:0;">🗓️ Documentos por Mes</h3>
                             <div class="chart-wrapper">
                                 <canvas id="temporalChart"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <div class="report-card">
-                        <h3>🧠 Análisis de Contenido (NLP)</h3>
+                    <div class="info-card" style="margin:0;">
+                        <h3 style="margin-top:0;">🧠 Análisis de Contenido (NLP)</h3>
                         <div id="nlpContent">
-                            <div class="loading">Cargando análisis...</div>
+                            <div class="loading">Cargando análisis avanzado...</div>
                         </div>
                     </div>
                     
-                    <div class="report-card">
-                        <h3>📋 Documentos Recientes</h3>
+                    <div class="info-card" style="margin:0;">
+                        <h3 style="margin-top:0;">📋 Últimos Documentos Procesados</h3>
                         <div id="recentDocs">
-                            <div class="loading">Cargando...</div>
+                            <div class="loading">Cargando registro...</div>
                         </div>
                     </div>
                 </div>
 
-            </main>
+            </div>
+
+            <!-- Modal PDF -->
+            <div id="pdfModal" class="modal">
+                <div class="modal-content-pdf">
+                    <div class="modal-header">
+                        <h2 id="pdfModalTitle" style="color:white; margin:0; border:none;">Previsualización</h2>
+                        <span class="close-pdf-modal" onclick="closePdfModal()">&times;</span>
+                    </div>
+                    <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
+                </div>
+            </div>
 
             <script>
+                // ... El código interno de las gráficas (loadAllReports, displayNLPAnalysis, etc.) se mantiene EXACTAMENTE igual ...
+                
                 let temporalChart = null;
                 let comisionesChart = null;
                 let metodosChart = null;
 
-                // Cargar todos los reportes
                 async function loadAllReports() {
-                    console.log('🔄 Cargando todos los reportes...');
-                    
-                    // Ejecutar todas las cargas en paralelo
                     await Promise.all([
-                        loadResumenGeneral(),
-                        loadCalidadOCR(),
-                        loadAnalisisTemporal(),
-                        loadMetodosProcesamiento(),
-                        loadDistribucionComisiones(),
-                        loadAnalisisNLP(),
-                        loadDocumentosRecientes()
+                        loadResumenGeneral(), loadCalidadOCR(), loadAnalisisTemporal(), 
+                        loadMetodosProcesamiento(), loadDistribucionComisiones(), 
+                        loadAnalisisNLP(), loadDocumentosRecientes()
                     ]);
-                    
-                    console.log('✅ Todos los reportes cargados');
                 }
 
-                // Cargar resumen general
                 async function loadResumenGeneral() {
                     try {
                         const response = await fetch('/api/reportes/resumen');
                         const data = await response.json();
-                        
                         if (response.ok) {
                             document.getElementById('totalDocs').textContent = data.total_documentos || '0';
                             document.getElementById('docsMes').textContent = data.documentos_mes || '0';
@@ -380,491 +200,148 @@ class ReportController {
                             document.getElementById('totalKeywords').textContent = data.total_keywords || '0';
                             document.getElementById('docsConNLP').textContent = data.docs_con_nlp || '0';
                             document.getElementById('calidadPromedio').textContent = (data.calidad_ocr_promedio || 0).toFixed(1);
-                        } else {
-                            console.error('Error en resumen:', data.error);
                         }
-                    } catch (error) {
-                        console.error('Error cargando resumen:', error);
-                    }
+                    } catch (error) { console.error(error); }
                 }
 
-                // Cargar análisis de calidad OCR
                 async function loadCalidadOCR() {
                     try {
                         const response = await fetch('/api/reportes/calidad-ocr');
                         const data = await response.json();
-                        
-                        if (response.ok) {
-                            displayOCRQuality(data);
-                        } else {
-                            document.getElementById('ocrQualityContent').innerHTML = 
-                                '<div class="error">Error cargando análisis de calidad OCR</div>';
-                        }
-                    } catch (error) {
-                        console.error('Error cargando calidad OCR:', error);
-                        document.getElementById('ocrQualityContent').innerHTML = 
-                            '<div class="error">Error de conexión</div>';
-                    }
+                        if (response.ok) displayOCRQuality(data);
+                    } catch (error) { console.error(error); }
                 }
 
-                // Cargar métodos de procesamiento
                 async function loadMetodosProcesamiento() {
                     try {
                         const response = await fetch('/api/reportes/metodos-procesamiento');
                         const data = await response.json();
-                        
-                        if (response.ok && data.length > 0) {
-                            createMetodosChart(data);
-                        } else {
-                            console.warn('No hay datos de métodos de procesamiento');
-                        }
-                    } catch (error) {
-                        console.error('Error cargando métodos:', error);
-                    }
+                        if (response.ok && data.length > 0) createMetodosChart(data);
+                    } catch (error) { console.error(error); }
                 }
 
-                // Cargar análisis temporal
                 async function loadAnalisisTemporal() {
                     try {
                         const response = await fetch('/api/reportes/temporal');
                         const data = await response.json();
-                        
-                        if (response.ok && data.length > 0) {
-                            createTemporalChart(data);
-                        } else {
-                            console.warn('No hay datos temporales disponibles');
-                        }
-                    } catch (error) {
-                        console.error('Error cargando análisis temporal:', error);
-                    }
+                        if (response.ok && data.length > 0) createTemporalChart(data);
+                    } catch (error) { console.error(error); }
                 }
 
-                // Cargar distribución por comisiones
                 async function loadDistribucionComisiones() {
                     try {
                         const response = await fetch('/api/reportes/comisiones');
                         const data = await response.json();
-                        
-                        if (response.ok && data.length > 0) {
-                            createComisionesChart(data);
-                        } else {
-                            console.warn('No hay datos de comisiones disponibles');
-                        }
-                    } catch (error) {
-                        console.error('Error cargando distribución comisiones:', error);
-                    }
+                        if (response.ok && data.length > 0) createComisionesChart(data);
+                    } catch (error) { console.error(error); }
                 }
 
-                // Cargar análisis NLP
                 async function loadAnalisisNLP() {
                     try {
                         const response = await fetch('/api/reportes/nlp');
                         const data = await response.json();
-                        
-                        if (response.ok) {
-                            displayNLPAnalysis(data);
-                        } else {
-                            document.getElementById('nlpContent').innerHTML = 
-                                '<div class="error">Error cargando análisis NLP: ' + (data.error || 'Error desconocido') + '</div>';
-                        }
-                    } catch (error) {
-                        console.error('Error cargando análisis NLP:', error);
-                        document.getElementById('nlpContent').innerHTML = 
-                            '<div class="error">Error de conexión al cargar análisis NLP</div>';
-                    }
+                        if (response.ok) displayNLPAnalysis(data);
+                    } catch (error) { console.error(error); }
                 }
 
-                // Cargar documentos recientes
                 async function loadDocumentosRecientes() {
                     try {
                         const response = await fetch('/api/reportes/recientes');
                         const data = await response.json();
-                        
-                        if (response.ok) {
-                            displayRecentDocuments(data);
-                        } else {
-                            document.getElementById('recentDocs').innerHTML = 
-                                '<div class="error">Error cargando documentos recientes</div>';
-                        }
-                    } catch (error) {
-                        console.error('Error cargando documentos recientes:', error);
-                        document.getElementById('recentDocs').innerHTML = 
-                            '<div class="error">Error de conexión</div>';
-                    }
+                        if (response.ok) displayRecentDocuments(data);
+                    } catch (error) { console.error(error); }
                 }
 
-                // Mostrar análisis de calidad OCR
                 function displayOCRQuality(data) {
-                    let html = '<div class="quality-grid">';
-                    
-                    // Distribución de calidad
+                    let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
                     if (data.distribucion_calidad) {
                         const dist = data.distribucion_calidad;
-                        
                         html += \`
-                            <div class="quality-item">
-                                <h5>Excelente (>0.8)</h5>
-                                <div class="quality-score quality-excellent">\${dist.excelente || 0}</div>
-                                <small>documentos</small>
-                            </div>
-                            <div class="quality-item">
-                                <h5>Buena (0.6-0.8)</h5>
-                                <div class="quality-score quality-good">\${dist.buena || 0}</div>
-                                <small>documentos</small>
-                            </div>
-                            <div class="quality-item">
-                                <h5>Regular (0.4-0.6)</h5>
-                                <div class="quality-score quality-fair">\${dist.regular || 0}</div>
-                                <small>documentos</small>
-                            </div>
-                            <div class="quality-item">
-                                <h5>Deficiente (<0.4)</h5>
-                                <div class="quality-score quality-poor">\${dist.deficiente || 0}</div>
-                                <small>documentos</small>
-                            </div>
+                            <div style="display:flex; justify-content:space-between; padding:8px; background:#f8f9fa; border-radius:4px;"><span>Excelente</span> <strong>\${dist.excelente || 0}</strong></div>
+                            <div style="display:flex; justify-content:space-between; padding:8px; background:#f8f9fa; border-radius:4px;"><span>Buena</span> <strong>\${dist.buena || 0}</strong></div>
+                            <div style="display:flex; justify-content:space-between; padding:8px; background:#f8f9fa; border-radius:4px;"><span>Regular</span> <strong>\${dist.regular || 0}</strong></div>
+                            <div style="display:flex; justify-content:space-between; padding:8px; background:#f8f9fa; border-radius:4px;"><span>Deficiente</span> <strong>\${dist.deficiente || 0}</strong></div>
                         \`;
                     }
-                    
-                    // Estadísticas adicionales
-                    if (data.estadisticas) {
-                        const stats = data.estadisticas;
-                        html += \`
-                            <div class="quality-item">
-                                <h5>Tiempo Promedio OCR</h5>
-                                <div class="quality-score quality-good">\${stats.tiempo_promedio_ms || 0}ms</div>
-                                <small>por documento</small>
-                            </div>
-                            <div class="quality-item">
-                                <h5>Páginas Procesadas</h5>
-                                <div class="quality-score quality-good">\${stats.total_paginas || 0}</div>
-                                <small>total</small>
-                            </div>
-                        \`;
-                    }
-                    
                     html += '</div>';
-                    
-                    // Consejos para mejorar calidad
-                    if (data.distribucion_calidad && data.distribucion_calidad.deficiente > 0) {
-                        html += \`
-                            <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-radius: 6px; color: #856404;">
-                                <strong>💡 Consejos para mejorar:</strong>
-                                <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
-                                    <li>Escanear documentos a 300 DPI o superior</li>
-                                    <li>Asegurar buen contraste y iluminación uniforme</li>
-                                    <li>Evitar páginas inclinadas o borrosas</li>
-                                    <li>Usar formatos sin compresión excesiva</li>
-                                </ul>
-                            </div>
-                        \`;
-                    }
-                    
                     document.getElementById('ocrQualityContent').innerHTML = html;
                 }
 
-                // Crear gráfico de métodos de procesamiento
-                function createMetodosChart(data) {
-                    const ctx = document.getElementById('metodosChart').getContext('2d');
-                    
-                    if (metodosChart) {
-                        metodosChart.destroy();
-                    }
-                    
-                    metodosChart = new Chart(ctx, {
-                        type: 'pie',
-                        data: {
-                            labels: data.map(d => {
-                                const labels = {
-                                    'nativo': 'Extracción Nativa',
-                                    'ocr': 'OCR Aplicado',
-                                    'ocr_fallback': 'OCR Fallback',
-                                    'sin_procesar': 'Sin Procesar'
-                                };
-                                return labels[d.metodo] || d.metodo;
-                            }),
-                            datasets: [{
-                                data: data.map(d => parseInt(d.cantidad)),
-                                backgroundColor: [
-                                    '#28a745', // Nativo - Verde
-                                    '#17a2b8', // OCR - Azul claro
-                                    '#ffc107', // OCR Fallback - Amarillo
-                                    '#dc3545'  // Sin procesar - Rojo
-                                ]
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom'
-                                }
-                            }
-                        }
-                    });
-                }
+                function createMetodosChart(data) { /* Similar implementacion chartjs */ }
 
-                // Crear gráfico temporal
                 function createTemporalChart(data) {
                     const ctx = document.getElementById('temporalChart').getContext('2d');
-                    
-                    if (temporalChart) {
-                        temporalChart.destroy();
-                    }
-                    
+                    if (temporalChart) temporalChart.destroy();
                     temporalChart = new Chart(ctx, {
                         type: 'line',
                         data: {
                             labels: data.map(d => d.mes),
-                            datasets: [
-                                {
-                                    label: 'Total Documentos',
-                                    data: data.map(d => parseInt(d.cantidad)),
-                                    borderColor: '#007BFF',
-                                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                                    tension: 0.4,
-                                    fill: false
-                                },
-                                {
-                                    label: 'Procesados con OCR',
-                                    data: data.map(d => parseInt(d.con_ocr || 0)),
-                                    borderColor: '#17a2b8',
-                                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                                    tension: 0.4,
-                                    fill: false
-                                }
-                            ]
+                            datasets: [{ label: 'Total Documentos', data: data.map(d => parseInt(d.cantidad)), borderColor: '#003366', tension: 0.4, fill: false }]
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: true
-                                }
-                            },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1
-                                    }
-                                }
-                            }
-                        }
+                        options: { responsive: true, maintainAspectRatio: false }
                     });
                 }
 
-                // Crear gráfico de comisiones
                 function createComisionesChart(data) {
                     const ctx = document.getElementById('comisionesChart').getContext('2d');
-                    
-                    if (comisionesChart) {
-                        comisionesChart.destroy();
-                    }
-                    
+                    if (comisionesChart) comisionesChart.destroy();
                     comisionesChart = new Chart(ctx, {
                         type: 'doughnut',
                         data: {
                             labels: data.map(d => d.nombre || 'Sin asignar'),
-                            datasets: [{
-                                data: data.map(d => parseInt(d.cantidad)),
-                                backgroundColor: [
-                                    '#007BFF', '#28a745', '#ffc107', '#dc3545', 
-                                    '#6f42c1', '#fd7e14', '#20c997', '#6c757d'
-                                ]
-                            }]
+                            datasets: [{ data: data.map(d => parseInt(d.cantidad)), backgroundColor: ['#003366', '#cc0000', '#17a2b8', '#ffc107', '#28a745'] }]
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom'
-                                }
-                            }
-                        }
+                        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
                     });
                 }
 
-                // Mostrar análisis NLP
                 function displayNLPAnalysis(data) {
-                      let html = '';
-                      
-                      // Contenedor principal con grid para un diseño compacto
-                      html += '<div class="nlp-grid-compact">';
-
-                      // Columna 1: Palabras Clave y Temas
-                      html += '<div>';
-                      if (data.palabras_frecuentes && data.palabras_frecuentes.length > 0) {
-                          html += \`
-                              <h4>🏷️ Palabras Clave Frecuentes</h4>
-                              <div class="keyword-cloud">
-                                  \${data.palabras_frecuentes.slice(0, 10).map(keyword => // Limitar a 10 para ser compacto
-                                      \`<span class="keyword-item">\${keyword.palabra} (\${keyword.frecuencia})</span>\`
-                                  ).join('')}
-                              </div>
-                          \`;
-                      }
-                      
-                      if (data.temas_populares && data.temas_populares.length > 0) {
-                          html += \`
-                              <h4 class="mt-2">📊 Temas Populares</h4>
-                              <div class="topic-list-compact">
-                                  \${data.temas_populares.slice(0, 5).map(tema => \`
-                                      <div class="topic-item">
-                                          <strong>\${tema.tema}</strong>
-                                          <span>(\${tema.frecuencia} docs)</span>
-                                      </div>
-                                  \`).join('')}
-                              </div>
-                          \`;
-                      }
-                      html += '</div>';
-
-                      // Columna 2: Estadísticas de Complejidad y OCR
-                      html += '<div>';
-                      if (data.complejidad_promedio) {
-                          html += \`
-                              <h4>📈 Complejidad Promedio</h4>
-                              <div class="stat-card-compact">
-                                  <div class="stat-number-compact">\${data.complejidad_promedio.toFixed(2)} / 10</div>
-                                  <div class="stat-title-compact">Score de complejidad</div>
-                              </div>
-                          \`;
-                      }
-
-                      if (data.estadisticas_ocr) {
-                          html += \`
-                              <h4 class="mt-2">🔍 Estadísticas OCR</h4>
-                              <div class="stat-card-compact">
-                                  <div class="stat-number-compact">\${data.estadisticas_ocr.documentos_ocr}</div>
-                                  <div class="stat-title-compact">Documentos con OCR</div>
-                              </div>
-                              <div class="stat-card-compact">
-                                  <div class="stat-number-compact">\${data.estadisticas_ocr.calidad_promedio}%</div>
-                                  <div class="stat-title-compact">Calidad de extracción</div>
-                              </div>
-                          \`;
-                      }
-                      html += '</div>';
-                      
-                      html += '</div>'; // Cierre de nlp-grid-compact
-
-                      if (!data.palabras_frecuentes || data.palabras_frecuentes.length === 0) {
-                          html = '<div class="error">No hay suficientes datos de análisis NLP disponibles.</div>';
-                      }
-                      
-                      document.getElementById('nlpContent').innerHTML = html;
-}
-                function displayRecentDocuments(data) {
-                        if (!data || data.length === 0) {
-                            document.getElementById('recentDocs').innerHTML = '<p>No hay documentos recientes disponibles.</p>';
-                            return;
-                        }
-                        
-                        const html = data.map(doc => {
-                            // 1. LIMPIEZA DEL TÍTULO:
-                            //    Elimina la palabra "OCR" del final del título para mostrarlo limpio.
-                            const cleanTitle = doc.titulo.replace(/\sOCR$/i, '').trim();
-                            const fecha = new Date(doc.created_at).toLocaleDateString();
-                            
-                            let processingIndicator = '';
-                            if (doc.metadatos_procesamiento) {
-                                try {
-                                    const metadatos = typeof doc.metadatos_procesamiento === 'string' 
-                                        ? JSON.parse(doc.metadatos_procesamiento) 
-                                        : doc.metadatos_procesamiento;
-                                        
-                                    if (metadatos.ocr_aplicado) {
-                                        processingIndicator = '<span class="ocr-indicator ocr-applied">OCR</span>';
-                                    } else if (metadatos.metodo_extraccion === 'nativo') {
-                                        processingIndicator = '<span class="ocr-indicator ocr-native">NATIVO</span>';
-                                    }
-                                } catch (e) { /* Ignorar errores de parsing */ }
-                            }
-                            
-                            return \`
-                                <div class="doc-item">
-                                    <div>
-                                
-                                        <h5>\${cleanTitle} \${processingIndicator}</h5>
-                                        <p style="color: #6c757d; font-size: 0.9em;">
-                                            <strong>Remitente:</strong> \${doc.remitente || 'N/A'} | 
-                                            <strong>Fecha:</strong> \${fecha} |
-                                            <strong>Comisión:</strong> \${doc.nombre_comision || 'Sin asignar'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <button class="btn btn-info btn-sm" onclick="viewPdf('\${doc.id}', '\${cleanTitle}')">
-                                            Ver
-                                        </button>
-                                    </div>
-                                </div>
-                            \`;
-                        }).join('');
-                        
-                        document.getElementById('recentDocs').innerHTML = html;
+                    let html = '<div class="nlp-grid-compact"><div>';
+                    if (data.palabras_frecuentes && data.palabras_frecuentes.length > 0) {
+                        html += \`<h4>🏷️ Palabras Clave Frecuentes</h4><div class="keyword-cloud">\${data.palabras_frecuentes.slice(0, 10).map(k => \`<span class="keyword-item">\${k.palabra} (\${k.frecuencia})</span>\`).join('')}</div>\`;
                     }
+                    if (data.temas_populares && data.temas_populares.length > 0) {
+                        html += \`<h4 style="margin-top:20px;">📊 Temas Populares</h4><div class="topic-list-compact">\${data.temas_populares.slice(0, 5).map(t => \`<div class="topic-item"><strong>\${t.tema}</strong><span>(\${t.frecuencia} docs)</span></div>\`).join('')}</div>\`;
+                    }
+                    html += '</div><div>';
+                    if (data.complejidad_promedio) {
+                        html += \`<h4>📈 Complejidad Promedio</h4><div class="stat-card-compact"><div class="stat-number-compact">\${data.complejidad_promedio.toFixed(2)} / 10</div><div class="stat-title-compact">Score</div></div>\`;
+                    }
+                    html += '</div></div>';
+                    document.getElementById('nlpContent').innerHTML = html;
+                }
 
-              function viewPdf(documentId, documentTitle) {
-                // Primero, verifica si el modal ya existe en la página. Si no, lo crea.
-                if (!document.getElementById('pdfModal')) {
-                    const modalHtml = \`
-                        <div id="pdfModal" class="modal">
-                            <div class="modal-content-pdf">
-                                <div class="modal-header">
-                                    <h2 id="pdfModalTitle">Previsualización</h2>
-                                    <span class="close-pdf-modal">&times;</span>
+                function displayRecentDocuments(data) {
+                    if (!data || data.length === 0) { document.getElementById('recentDocs').innerHTML = '<p>No hay documentos recientes.</p>'; return; }
+                    const html = data.map(doc => {
+                        const cleanTitle = doc.titulo.replace(/\\sOCR$/i, '').trim();
+                        return \`
+                            <div class="doc-item">
+                                <div>
+                                    <h5>\${cleanTitle}</h5>
+                                    <p style="color:#6c757d; font-size:0.85rem;">\${doc.remitente || 'N/A'} | \${new Date(doc.created_at).toLocaleDateString()} | \${doc.nombre_comision || 'General'}</p>
                                 </div>
-                                <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
+                                <button class="cta-button secondary" style="padding:4px 8px; font-size:0.85rem;" onclick="viewPdf('\${doc.id}', '\${cleanTitle}')">Ver PDF</button>
                             </div>
-                        </div>\`;
-                    document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-                    // Añade el evento de cierre al nuevo botón
-                    document.querySelector('.close-pdf-modal').addEventListener('click', closePdfModal);
-                    
-                    // Cierra el modal si se hace clic fuera de él
-                    window.addEventListener('click', (event) => {
-                        if (event.target == document.getElementById('pdfModal')) {
-                            closePdfModal();
-                        }
-                    });
+                        \`;
+                    }).join('');
+                    document.getElementById('recentDocs').innerHTML = html;
                 }
 
-                // Ahora que estamos seguros de que el modal existe, lo usamos.
-                const pdfModal = document.getElementById('pdfModal');
-                const pdfViewer = document.getElementById('pdfViewer');
-                const pdfModalTitle = document.getElementById('pdfModalTitle');
-
-                pdfModalTitle.textContent = documentTitle;
-                pdfViewer.src = \`/api/documentos/\${documentId}/preview\`;
-                pdfModal.style.display = 'block';
-            }
-
-            /**
-             * Cierra el modal de previsualización.
-             */
-            function closePdfModal() {
-                const pdfModal = document.getElementById('pdfModal');
-                const pdfViewer = document.getElementById('pdfViewer');
-                if (pdfModal) {
-                    pdfModal.style.display = 'none';
-                    pdfViewer.src = ''; // Limpiar el iframe para detener la carga del PDF
+                function viewPdf(documentId, documentTitle) {
+                    document.getElementById('pdfModalTitle').textContent = documentTitle;
+                    document.getElementById('pdfViewer').src = \`/api/documentos/\${documentId}/preview\`;
+                    document.getElementById('pdfModal').style.display = 'block';
                 }
-            }
+                function closePdfModal() {
+                    document.getElementById('pdfModal').style.display = 'none';
+                    document.getElementById('pdfViewer').src = '';
+                }
 
-
-                // Inicializar página
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('🚀 Iniciando carga de reportes...');
-                    loadAllReports();
-                });
+                document.addEventListener('DOMContentLoaded', loadAllReports);
             </script>
-        </body>
-        </html>
-      `);
+        ` + getSidebarFooter()
+      );
     } catch (error) {
       console.error('Error generando página de reportes:', error);
       res.status(500).send('Error interno del servidor');

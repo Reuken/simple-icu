@@ -9,6 +9,7 @@ const Tesseract = require('tesseract.js');
 const pdf2pic = require('pdf2pic');
 const sharp = require('sharp');
 const sentimentAnalyzer = new natural.SentimentAnalyzer('Spanish', PorterStemmerEs, 'afinn');
+const { getSidebarHeader, getSidebarFooter } = require('../views/pages');
 
 // Configuración de NLP en español
 // CORREGIDO: Se borro la linea 10
@@ -33,486 +34,17 @@ function parseJSONSeguro(data, defaultValue = null) {
 
 
 class DocumentController {
-  
-  // Obtener página principal de documentos
-  static async getDocumentosPage(req, res) {
-    try {
-      const usuario = req.session.usuario;
-      const permisos = usuario.permisos;
-      const comisionesResult = await query('SELECT id, nombre FROM comisiones ORDER BY nombre');
-      const comisiones = comisionesResult.rows;
-      
-      res.send(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Gestión de Documentos - ICU</title>
-            <link rel="stylesheet" href="/estilos.css">
 
-            <style>
-                /* Estilos específicos para la tabla y paginación */
-                .document-table-container { margin-top: 20px; overflow-x: auto; }
-                .document-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                .document-table th, .document-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                .document-table th { background-color: #f2f2f2; }
-                .pagination-controls { display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px; }
-                .pagination-controls button { padding: 8px 15px; background-color: #333; color: white; border: none; border-radius: 5px; cursor: pointer; }
-                .pagination-controls button:hover:not(:disabled) { background-color: #555; }
-                .pagination-controls button:disabled { background-color: #ccc; cursor: not-allowed; }
-                .search-filter-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
-                .search-filter-controls input, .search-filter-controls select { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
-                .action-buttons { display: flex; gap: 5px; }
-                .action-buttons button, .action-buttons a { padding: 5px 10px; border-radius: 4px; text-decoration: none; font-size: 0.9em;}
-                .view-button { background-color: #007bff; color: white; border: none; }
-                .download-button { background-color: #28a745; color: white; border: none; }
-                /* Estilo base para todas las insignias de categoría */
-                    .category-badge {
-                        color: white;
-                        padding: 4px 10px;
-                        border-radius: 12px;
-                        font-size: 0.8em;
-                        font-weight: 500;
-                        text-transform: capitalize; /* Pone la primera letra en mayúscula */
-                    }
-
-                    /* Colores específicos para cada categoría */
-                    .category-resolucion { background-color: #007BFF; } /* Azul */
-                    .category-reglamento { background-color: #6f42c1; } /* Morado */
-                    .category-informe { background-color: #fd7e14; }   /* Naranja */
-                    .category-acta { background-color: #5db464ff; }   /* Gris */
-                    .category-citacion { background-color: #f5bd05ff; }   /* Amarillo */
-                    .category-pronunciamiento { background-color: #bb2e2eff; }   /* Rojo */
-                    .delete-button {
-                        background-color: #dc3545;
-                        color: white;
-                        border: none;
-                                  }
-
-                /* Notificacion toast */
-                    .toast-notification {
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        padding: 15px 25px;
-                        border-radius: 8px;
-                        color: white;
-                        font-weight: bold;
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-                        z-index: 10001;
-                        opacity: 0;
-                        transform: translateY(-20px);
-                        transition: opacity 0.3s ease, transform 0.3s ease;
-                    }
-                    .toast-notification.show {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                    .toast-notification.success {
-                        background-color: #28a745; /* Verde */
-                    }
-                    .toast-notification.error {
-                        background-color: #dc3545; /* Rojo */
-                    }
-            </style>
-        </head>
-        <body>
-            <nav>
-                <a href="/dashboard" class="logo">ICU Dashboard</a>
-                <div class="nav-links">
-                    <a href="/dashboard">🖥️ Dashboard</a>
-                    <a href="/documentos" class="active">📄 Documentos</a>
-                    <span class="user-info-nav">👤 ${usuario.nombre}</span>
-                    <a href="/logout" class="logout-btn">⏻️ Cerrar Sesión</a>
-                </div>
-            </nav>
-            
-            <main>
-                <div class="split-container">
-                  <div class="form-column">
-                ${permisos.subir_documentos ? `
-                    <h2>Subir Nuevo Documento</h2>
-                    <form onsubmit="handleUploadSubmit(event)" enctype="multipart/form-data" class="form-container">
-                        <label for="titulo">Título del documento:</label>
-                        <input type="text" id="titulo" name="titulo" required>
-
-                        <label for="remitente">Remitente:</label>
-                        <input type="text" id="remitente" name="remitente" required>
-
-                        <label for="comision_id">Comisión:</label>
-                        <select id="comision_id" name="comision_id">
-                            <option value="">Seleccionar comisión...</option>
-                            ${comisiones.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('')}
-                        </select>
-
-                         <label for="categoria">Categoría:</label>
-                            <select id="categoria" name="categoria">
-                                <option value="Acta">Acta</option>
-                                <option value="Citacion">Citacion</option>
-                                <option value="Informe de comision">Informe</option>
-                                <option value="Pronunciamiento">Pronunciamiento</option>
-                                <option value="Reglamento">Reglamento</option>
-                                <option value="Resolucion">Resolución</option>
-                            </select>
-
-                        <div class="drop-area" id="drop-area">
-                            <input type="file" id="archivo" name="archivo" accept="application/pdf" hidden required>
-                            <p>Haz clic aquí para seleccionar un archivo PDF o arrástralo</p>
-                            <p>Máximo 25MB - Solo archivos PDF</p>
-                            <p id="file-name-display"></p>
-                        </div>
-                        <button type="submit" class="cta-button">Subir Documento</button>
-                      </form>
-                    </div>      
-                <hr>
-                ` : ''}
-            <div class="list-column">
-                    <h2>Documentos del Sistema</h2>
-                    <div class="search-filter-controls">
-                        <input type="text" id="document-search" placeholder="Buscar documentos...">
-                         <select id="document-comision-filter">
-                            <option value="">Todas las comisiones</option>
-                            ${comisiones.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('')}
-                         </select>
-                         <select id="document-category-filter">
-                              <option value="">Todas las categorías</option>
-                                <option value="Acta">Acta</option>
-                                <option value="Citacion">Citacion</option>
-                                <option value="Informe de comision">Informe</option>
-                                <option value="Pronunciamiento">Pronunciamiento</option>
-                                <option value="Reglamento">Reglamento</option>
-                                <option value="Resolucion">Resolución</option>
-                          </select>
-                        <button class="cta-button" onclick="loadDocuments()">Buscar</button>
-                    </div>
-
-                    <div class="document-table-container">
-                        <table class="document-table">
-                            <thead>
-                                <tr>
-                                    <th>Título</th>
-                                    <th>Remitente</th>
-                                    <th>Comisión</th>
-                                    <th>Categoría</th>
-                                    <th>Fecha</th>
-                                    <th>Subido por</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody id="document-list-body">
-                                </tbody>
-                        </table>
-                    </div>
-
-                    <div class="pagination-controls">
-                        <button id="prevPage" disabled>Anterior</button>
-                        <span id="pageInfo">Página 1 de 1</span>
-                        <button id="nextPage" disabled>Siguiente</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-      </main>
-
-            <div id="pdfModal" class="modal">
-                <div class="modal-content-pdf">
-                    <div class="modal-header">
-                        <h2 id="pdfModalTitle">Previsualización de Documento</h2>
-                        <span class="close-pdf-modal" onclick="closePdfModal()">&times;</span>
-                    </div>
-                    <iframe id="pdfViewer" class="pdf-iframe" frameborder="0"></iframe>
-                </div>
-            </div>
-
-            <script>
-            let currentPage = 1;
-                let totalPages = 1;
-                const documentsPerPage = 15; // Ajusta según tu preferencia
-
-                document.addEventListener('DOMContentLoaded', () => {
-                    loadDocuments();
-                    setupDropArea();
-
-                    document.getElementById('document-search').addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            currentPage = 1; // Resetear a la primera página en cada nueva búsqueda
-                            loadDocuments();
-                        }
-                    });
-                    document.getElementById('document-comision-filter').addEventListener('change', () => {
-                        currentPage = 1; // Resetear a la primera página en cada cambio de filtro
-                        loadDocuments();
-                    });
-
-                    // Event listener para el filtro de categoría
-                      document.getElementById('document-category-filter').addEventListener('change', () => {
-                          currentPage = 1;
-                          loadDocuments();
-                      });
-
-                    document.getElementById('prevPage').addEventListener('click', () => {
-                        if (currentPage > 1) {
-                            currentPage--;
-                            loadDocuments();
-                        }
-                    });
-                    document.getElementById('nextPage').addEventListener('click', () => {
-                        if (currentPage < totalPages) {
-                            currentPage++;
-                            loadDocuments();
-                        }
-                    });
-                });
-
-                async function loadDocuments() {
-                    const searchTerm = document.getElementById('document-search').value;
-                    const comisionFilter = document.getElementById('document-comision-filter').value;
-                    const categoryFilter = document.getElementById('document-category-filter').value;
-                    const queryString = new URLSearchParams({
-                        page: currentPage,
-                        limit: documentsPerPage,
-                        search: searchTerm,
-                        comision_id: comisionFilter,
-                        categoria: categoryFilter 
-                    }).toString();
-
-                    console.log('Actualizando lista de documentos con los parámetros:', queryString);
-
-                    try {
-                        const response = await fetch('/api/documentos?' + queryString );
-                        const data = await response.json();
-                        
-                        const documentListBody = document.getElementById('document-list-body');
-                        documentListBody.innerHTML = ''; // Limpiar la tabla
-
-                        if (data.documents && data.documents.length > 0) {
-                            data.documents.forEach(doc => {
-                                const row = documentListBody.insertRow();
-
-                                //Cada categoria con su color distintivo
-                                const categoria = doc.categoria || 'General';
-                                const categoriaClass = 'category-' + categoria.toLowerCase().split(' ')[0];
-
-                                row.innerHTML = \`
-                                    <td>\${doc.titulo}</td>
-                                    <td>\${doc.remitente}</td>
-                                    <td>\${doc.comision_nombre || 'N/A'}</td>
-                                     <td><span class="category-badge \${categoriaClass}">\${categoria}</span></td>
-                                    <td>\${new Date(doc.fecha_subida).toLocaleDateString()}</td>
-                                    <td>\${doc.subido_por || 'Desconocido'}</td>
-                                    <td class="action-buttons">
-                                        <button class="view-button" onclick="viewPdf('\${doc.id}', '\${doc.titulo}')">Ver</button>
-                                        <a href="/api/documentos/\${doc.id}/download" class="download-button">Descargar</a>
-                                        <button class="delete-button" onclick="deleteDocument('\${doc.id}', '\${doc.titulo}')">Borrar</button>
-                                    </td>
-                                \`;
-                            });
-                        } else {
-                            documentListBody.innerHTML = \`<tr><td colspan="6">No se encontraron documentos.</td></tr>\`;
-                        }
-                        
-                        // Actualizar controles de paginación
-                        currentPage = data.currentPage;
-                        totalPages = data.totalPages;
-                        document.getElementById('pageInfo').textContent = \`Página \${currentPage} de \${totalPages}\`;
-                        document.getElementById('prevPage').disabled = currentPage === 1;
-                        document.getElementById('nextPage').disabled = currentPage === totalPages;
-
-                    } catch (error) {
-                        console.error('Error al cargar documentos:', error);
-                        document.getElementById('document-list-body').innerHTML = \`<tr><td colspan="6">Error al cargar documentos.</td></tr>\`;
-                    }
-                }
-
-                // --- Funcionalidad de Drag & Drop y Previsualización ---
-
-                function setupDropArea() {
-                    const dropArea = document.getElementById('drop-area');
-                    const fileInput = document.getElementById('archivo');
-                    const fileNameDisplay = document.getElementById('file-name-display');
-
-                    ;['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                        dropArea.addEventListener(eventName, preventDefaults, false);
-                    });
-
-                    function preventDefaults(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                    }
-
-                    ;['dragenter', 'dragover'].forEach(eventName => {
-                        dropArea.addEventListener(eventName, highlight, false);
-                    });
-
-                    ;['dragleave', 'drop'].forEach(eventName => {
-                        dropArea.addEventListener(eventName, unhighlight, false);
-                    });
-
-                    function highlight() {
-                        dropArea.classList.add('highlight');
-                    }
-
-                    function unhighlight() {
-                        dropArea.classList.remove('highlight');
-                    }
-
-                    dropArea.addEventListener('drop', handleDrop, false);
-                    fileInput.addEventListener('change', handleFilesSelect, false);
-                    dropArea.addEventListener('click', () => fileInput.click(), false);
-
-
-                    function handleFilesSelect(e) {
-                        const dt = e.dataTransfer || e.target;
-                        const files = dt.files;
-                        if (files.length > 0) {
-                            fileInput.files = files; // Asigna el archivo seleccionado al input real
-                            fileNameDisplay.textContent = \`Archivo seleccionado: \${files[0].name}\`;
-                        } else {
-                            fileNameDisplay.textContent = '';
-                        }
-                    }
-
-                    function handleDrop(e) {
-                        const dt = e.dataTransfer;
-                        const files = dt.files;
-                        handleFilesSelect({ dataTransfer: dt, target: fileInput });
-                    }
-                }
-                
-                function viewPdf(documentId, documentTitle) {
-                    const pdfModal = document.getElementById('pdfModal');
-                    const pdfViewer = document.getElementById('pdfViewer');
-                    const pdfModalTitle = document.getElementById('pdfModalTitle');
-
-                    pdfModalTitle.textContent = documentTitle;
-                    pdfViewer.src = \`/api/documentos/\${documentId}/preview\`;
-                    pdfModal.style.display = 'block';
-                }
-
-                function closePdfModal() {
-                    const pdfModal = document.getElementById('pdfModal');
-                    const pdfViewer = document.getElementById('pdfViewer');
-                    pdfModal.style.display = 'none';
-                    pdfViewer.src = ''; // Limpiar el iframe al cerrar
-                }
-                window.onclick = function(event) {
-                    const pdfModal = document.getElementById('pdfModal');
-                    if (event.target == pdfModal) {
-                        closePdfModal();
-                    }
-                }
-           
-                          /**
-               * Muestra una notificación temporal (toast) en la esquina de la pantalla.
-               */
-              function showAlert(message, type = 'success') {
-                  const notification = document.createElement('div');
-                  notification.className = \`toast-notification \${type}\`;
-                  notification.textContent = message;
-                  document.body.appendChild(notification);
-
-                  // Muestra la notificación
-                  setTimeout(() => {
-                      notification.classList.add('show');
-                  }, 10);
-
-                  // Oculta y elimina la notificación después de 3 segundos
-                  setTimeout(() => {
-                      notification.classList.remove('show');
-                      setTimeout(() => {
-                          document.body.removeChild(notification);
-                      }, 300);
-                  }, 3000);
-              }
-
-
-              // UploadSubmit
-
-                  async function handleUploadSubmit(event) {
-                      event.preventDefault();
-                      
-                      const form = event.target;
-                      const submitButton = form.querySelector('button[type="submit"]');
-                      const originalButtonText = submitButton.textContent;
-                      const formData = new FormData(form);
-                      
-                      if (!formData.get('titulo')?.trim()) { 
-                          showAlert('El título es obligatorio', 'error'); 
-                          return; 
-                      }
-                      if (!formData.get('archivo') || formData.get('archivo').size === 0) { 
-                          showAlert('Debe seleccionar un archivo', 'error'); 
-                          return; 
-                      }
-                      
-                      submitButton.disabled = true;
-                      submitButton.textContent = 'Subiendo y procesando...';
-                      
-                      // Iniciar la subida SIN esperar respuesta
-                      fetch('/api/documentos', { 
-                          method: 'POST', 
-                          body: formData 
-                      }).catch(error => {
-                          console.error('Error en subida:', error);
-                      });
-                      
-                      // Esperar
-                      setTimeout(() => {
-                          submitButton.disabled = false;
-                          submitButton.textContent = originalButtonText;
-                          
-                          form.reset();
-                          document.getElementById('file-name-display').textContent = '';
-                          
-                          showAlert('Documento subido con éxito', 'success');
-                          loadDocuments();
-                      }, 15000);
-                  }
-
-                  async function deleteDocument(id, titulo) {
-                          if (!confirm(\`¿Estás seguro de que quieres eliminar el documento "\${titulo}"? Esta acción no se puede deshacer.\`)) {
-                              return;
-                          }
-
-                          try {
-                              const response = await fetch(\`/api/documentos/\${id}\`, {
-                                  method: 'DELETE',
-                              });
-
-                              const result = await response.json();
-
-                              if (response.ok && result.success) {
-                                  showAlert('Documento eliminado con éxito', 'success');
-                                  loadDocuments(); // Recargar la lista
-                              } else {
-                                  showAlert(result.message || 'No se pudo eliminar el documento', 'error');
-                              }
-                          } catch (error) {
-                              console.error('Error al eliminar documento:', error);
-                              showAlert('Error de red al intentar eliminar.', 'error');
-                          }
-                      }
-            </script>
-      </body>
-      </html>
-    `);
-    } catch (error) {
-      console.error('Error generando página de documentos:', error);
-      res.status(500).send('Error interno del servidor');
-    }
-  }
-
-  // Obtener lista de documentos
-static async getDocumentos(req, res) {
+// Obtener lista de documentos
+  static async getDocumentos(req, res) {
     try {
       const page = parseInt(req.query.page) || 1;
-      const { limit = 15, search = '', comision_id = '', categoria = '' } = req.query;
+      const { limit = 15, search = '', comision_id = '', categoria = '', estado = '' } = req.query;
       const offset = (page - 1) * parseInt(limit);
       
       let queryText = `
         SELECT
-          d.id, d.titulo, d.remitente, d.categoria,
+          d.id, d.titulo, d.remitente, d.categoria, d.estado,
           d.palabras_clave, d.analisis_nlp, d.recomendaciones, d.metadatos_procesamiento,
           c.nombre AS comision_nombre,
           d.fecha_ingreso AS fecha_subida,
@@ -529,24 +61,24 @@ static async getDocumentos(req, res) {
 
       if (search) {
         const searchClause = ` AND (d.titulo ILIKE $${paramIndex} OR d.remitente ILIKE $${paramIndex} OR c.nombre ILIKE $${paramIndex} OR u.nombre ILIKE $${paramIndex})`;
-        queryText += searchClause;
-        countQuery += searchClause;
-        queryParams.push(`%${search}%`);
-        paramIndex++;
+        queryText += searchClause; countQuery += searchClause;
+        queryParams.push(`%${search}%`); paramIndex++;
       }
       if (comision_id) {
         const comisionClause = ` AND d.comision_id = $${paramIndex}`;
-        queryText += comisionClause;
-        countQuery += comisionClause;
-        queryParams.push(comision_id);
-        paramIndex++;
+        queryText += comisionClause; countQuery += comisionClause;
+        queryParams.push(comision_id); paramIndex++;
       }
       if (categoria) {
         const categoryClause = ` AND d.categoria = $${paramIndex}`;
-        queryText += categoryClause;
-        countQuery += categoryClause;
-        queryParams.push(categoria);
-        paramIndex++;
+        queryText += categoryClause; countQuery += categoryClause;
+        queryParams.push(categoria); paramIndex++;
+      }
+      // SOLUCIÓN: Agregar filtro de estado a la consulta SQL
+      if (estado) {
+        const estadoClause = ` AND d.estado = $${paramIndex}`;
+        queryText += estadoClause; countQuery += estadoClause;
+        queryParams.push(estado); paramIndex++;
       }
       
       const totalDocumentsResult = await query(countQuery, queryParams);
@@ -566,17 +98,31 @@ static async getDocumentos(req, res) {
         metadatos_procesamiento: parseJSONSeguro(doc.metadatos_procesamiento, {})
       }));
 
-      res.json({
-          documents: documentosProcessed,
-          currentPage: page,
-          totalPages: totalPages,
-          totalDocuments: totalDocuments
-      });
+      res.json({ documents: documentosProcessed, currentPage: page, totalPages, totalDocuments });
 
     } catch (error) {
       console.error('Error obteniendo documentos:', error);
-      res.status(500).json({ error: 'Error interno del servidor al obtener documentos.' });
+      res.status(500).json({ error: 'Error interno al obtener documentos.' });
     }
+  }
+
+  // NUEVO: Obtener la bitácora de cambios
+  static async getBitacora(req, res) {
+      try {
+          const result = await query(`
+              SELECT b.id, b.estado_anterior, b.estado_nuevo, b.observacion, b.fecha,
+                     d.titulo AS documento_titulo, u.nombre AS usuario_nombre
+              FROM bitacora_documentos b
+              JOIN documentos d ON b.documento_id = d.id
+              JOIN usuarios u ON b.usuario_id = u.id
+              ORDER BY b.fecha DESC
+              LIMIT 50
+          `);
+          res.json(result.rows);
+      } catch (error) {
+          console.error('Error obteniendo bitácora:', error);
+          res.status(500).json({ error: 'Error obteniendo bitácora.' });
+      }
   }
 
 
@@ -1084,24 +630,17 @@ static async getTodosLosReglamentos(req, res) {
         
         await client.query('COMMIT');
         
-        // CRÍTICO: Asegúrate que NO se haya enviado nada antes
+        // Si el router ya contestó al cliente (status 202), solo documentamos el éxito en consola
         if (res.headersSent) {
-            console.error('❌ Headers ya enviados, no se puede responder');
+            console.log(`✅ [SEGUNDO PLANO] El documento "${titulo}" finalizó su procesamiento OCR y PNL exitosamente.`);
             return;
         }
         
-        // Prepara la respuesta
-        const responseData = { 
+        // Si la conexión sigue viva, devolvemos el JSON con Express estándar
+        return res.status(200).json({ 
             success: true, 
             message: 'Documento subido y procesado con éxito' 
-        };
-        
-        // Envía la respuesta de forma explícita
-        res.writeHead(200, {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(JSON.stringify(responseData))
         });
-        res.end(JSON.stringify(responseData));
         
     } catch (error) {
         await client.query('ROLLBACK');

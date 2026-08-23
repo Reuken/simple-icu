@@ -329,21 +329,16 @@ async function checkDataIntegrity() {
 }
 
 // Manejo graceful del cierre de la aplicación
-process.on('SIGTERM', async () => {
-  console.log('📝 Recibida señal SIGTERM, cerrando pool de conexiones...');
-  await closePool();
+// Manejo graceful del cierre de la aplicación
+process.on('SIGTERM', () => {
   process.exit(0);
 });
 
-process.on('SIGINT', async () => {
-  console.log('📝 Recibida señal SIGINT, cerrando pool de conexiones...');
-  await closePool();
+process.on('SIGINT', () => {
   process.exit(0);
 });
-
 // Exportar funciones y objetos
 module.exports = {
-  query: (text, params) => pool.query(text, params),
   pool,
   query,
   getClient,

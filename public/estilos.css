@@ -1,986 +1,599 @@
-/* Estilos Generales y para el Cuerpo de la Página */
+/* public/estilos.css */
+
+:root {
+    --uagrm-blue: #003366; /* Azul UAGRM */
+    --uagrm-blue-hover: #002244;
+    --uagrm-red: #cc0000; /* Rojo UAGRM */
+    --uagrm-bg: #f4f7f6;
+    --text-dark: #333333;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+}
+
+/* =========================================
+   ESTILOS GENERALES
+========================================= */
+/* =========================================
+   CONTROL DE IMÁGENES Y LOGOS
+========================================= */
+
+/* 1. Regla universal: Ninguna imagen podrá salirse de su contenedor */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* 2. Control exacto para el logo del Login */
+.login-box img {
+    max-width: 180px; /* Ajusta este valor si lo quieres más grande o pequeño */
+    height: auto;
+    margin: 0 auto 1.5rem auto; /* Esto garantiza que esté perfectamente centrado */
+    display: block;
+}
+
+/* 3. Control por si decides poner una imagen en la barra de navegación (Navbar) */
+nav .logo img {
+    max-height: 50px; /* Evita que la barra de navegación se haga gigante */
+    width: auto;
+    vertical-align: middle;
+}
+
+/* 4. Control por si pones un logo dentro de las tarjetas azules de bienvenida */
+.welcome-card img {
+    max-width: 120px;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0;
-    background-color: #f4f7f6;
-    color: #333;
+    background-color: var(--uagrm-bg);
+    color: var(--text-dark);
     display: flex;
     flex-direction: column;
     min-height: 100vh;
 }
 
-/* Contenedor Principal para centrar el contenido */
-.container {
+.main-container, .container {
     flex: 1;
-    width: 90%;
-    max-width: 800px;
+    width: 95%;
+    max-width: 1400px;
     margin: 2rem auto;
-    text-align: center;
-    padding: 2rem;
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    padding: 1rem;
 }
 
-.grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px; /* Espacio entre las tarjetas */
-}
-
-/* Barra de Navegación */
+/* =========================================
+   BARRA DE NAVEGACIÓN (UNIFICADA)
+========================================= */
 nav {
     background-color: #ffffff;
     padding: 1rem 2rem;
-    border-bottom: 1px solid #e0e0e0;
+    border-bottom: 4px solid var(--uagrm-blue); /* Detalle institucional */
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
 nav .logo {
     font-weight: bold;
     font-size: 1.5rem;
-    color: #007BFF;
+    color: var(--uagrm-blue);
     text-decoration: none;
+}
+
+nav .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
 }
 
 nav .nav-links a {
-    color: #333;
+    color: var(--text-dark);
     text-decoration: none;
     font-weight: 500;
-    margin-left: 1.5rem;
     transition: color 0.3s ease;
+    padding-bottom: 5px;
 }
 
 nav .nav-links a:hover {
-   background-color: #007BFF;
-                  color: white;
-                  padding: 0.4rem 0.4rem;
-                  border: 1px solid #000;
-                  border-radius: 2 px;
-                  cursor: pointer;
-                  text-decoration: none;
-                  display: inline-block;
+    color: var(--uagrm-red);
 }
 
 nav .nav-links a.active {
-  color: #007BFF; /* Use the primary blue color for the text */
-  font-weight: 700; /* Make it slightly bolder */
-  /* Optional: Add a subtle bottom border */
-  border-bottom: 2px solid #007BFF; 
-  padding-bottom: 2px; /* Adjust padding if using border */
+    color: var(--uagrm-blue);
+    font-weight: 700;
+    border-bottom: 3px solid var(--uagrm-red);
 }
 
-/* Optional: Prevent hover effect on the active link if desired */
-nav .nav-links a.active:hover {
-  background-color: transparent; /* Keep background transparent */
-  color: #0056b3; /* Maybe slightly darken the blue on hover */
-  border: none; /* Remove the hover border */
-  border-bottom: 2px solid #0056b3; /* Keep/darken the bottom border */
-  padding: inherit; /* Reset padding to default link padding */
-  padding-bottom: 2px; /* Keep bottom padding for border */
-  cursor: default; /* Indicate it's the current page */
+.user-info-nav {
+    font-weight: 600;
+    color: var(--uagrm-blue);
+    border-left: 2px solid var(--border-color);
+    padding-left: 1.5rem;
 }
 
-/* Títulos y Texto */
-h1 {
-    color: #333;
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-}
-
-p {
-    font-size: 1.1rem;
-    line-height: 1.6;
-    color: #666;
-}
-
-/* Botón Grande de Login (y otros botones) */
+/* =========================================
+   BOTONES
+========================================= */
 .cta-button {
     display: inline-block;
-    background-color: #007BFF;
+    background-color: var(--uagrm-blue);
     color: #ffffff;
-    padding: 15px 35px;
-    font-size: 1.2rem;
-    font-weight: bold;
+    padding: 10px 25px;
+    font-size: 1rem;
+    font-weight: 600;
     text-decoration: none;
-    border-radius: 50px; /* Bordes redondeados para un look moderno */
-    margin-top: 1.5rem;
+    border-radius: 4px;
     transition: background-color 0.3s ease, transform 0.2s ease;
     border: none;
     cursor: pointer;
-}
-
-.cta-button:hover {
-    background-color: #0056b3;
-    transform: translateY(-2px); /* Pequeño efecto al pasar el mouse */
-}
-
-/* Estilos para el Formulario de Login */
-.login-form {
-    margin-top: 2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem; /* Espacio entre los elementos del formulario */
-}
-
-.login-form input {
-    padding: 15px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 1rem;
-}
-
-.login-form input:focus {
-    outline: none;
-    border-color: #007BFF;
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-}
-
-/* Estilos para la página "Acerca de" */
-.about-content {
-    text-align: left; /* Alineación a la izquierda para mejor legibilidad */
-}
-
-/* Responsividad para móviles */
-@media (max-width: 600px) {
-    nav {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    h1 {
-        font-size: 2
-    }
-} 
-
-/* Encabezado */
-header {
-    background-color: #333;
-    color: white;
-    padding: 1rem;
     text-align: center;
-    position: fixed;
-    width: 100%;
-    top: 0;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-header h1 {
-    margin: 0;
-    font-size: 2rem;
-}
-
-/* Contenido principal */
-main {
-    padding: 2rem;
-    text-align: left;
-}
-
-/* Estilos dashboard */
-              .perm-badge {
-                  font-size: 0.8rem;
-                  padding: 0.25rem 0.5rem;
-                  border-radius: 12px;
-                  font-weight: bold;
-                  display: inline-block;
-                  margin-top: 0.5rem;
-              }
-              .perm-badge {
-                  background-color: #28a745;
-                  color: white;
-              }
-              .perm-badge.view-only {
-                  background-color: #6c757d;
-                  color: white;
-              }
-              .dashboard-container {
-                  max-width: 1500px;
-                  margin: 2rem auto;
-                  padding: 1rem;
-                }
-
-              .dashboard-main-grid {
-                    display: grid;
-                    grid-template-columns: 1fr; /* Single column by default (mobile) */
-                    gap: 2rem; /* Space between sections */
-                }
-              .welcome-card {
-                  background: linear-gradient(135deg, #2a95e2ff, #cfe2ff); /* Gradiente de azules muy claros */
-                  /* Se elimina 'color: white;' para que herede el color oscuro del body */
-                  padding: 2.5rem 2rem;
-                  border-radius: 12px;
-                  margin-bottom: 2rem;
-                  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Sombra más sutil y neutral */
-                  border: 1px solid #dee2e6; /* Borde ligero para definir la tarjeta */
-              }
-              .stats-grid {
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                  gap: 1rem;
-                  margin-bottom: 2rem;
-              }
-              .stat-card {
-                  background: white;
-                  padding: 1.5rem;
-                  border-radius: 8px;
-                  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                  text-align: center;
-                  border-left: 4px solid #007BFF;
-              }
-              .stat-number {
-                  font-size: 2rem;
-                  font-weight: bold;
-                  color: #007BFF;
-              }
-              .quick-actions {
-                  display: grid;
-                  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                  gap: 1rem;
-                  margin-top: 2rem;
-              }
-              .action-card {
-                  background-color: #ffffff;
-                  border: 2px solid #e9ecef;
-                  border-radius: 8px;
-                  padding: 1.5rem;
-                  text-align: center;
-                  transition: all 0.3s ease;
-                  cursor: pointer;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-              }
-              .action-card:hover {
-                  border-color: #007BFF;
-                  transform: translateY(-2px);
-                  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
-              }
-              .user-info, .comisiones-section {
-                  background-color: #f8f9fa;
-                  padding: 1.5rem;
-                  border-radius: 8px;
-                  margin-bottom: 2rem;
-                  border: 1px solid #dee2e6;
-              }
-              .comision-card {
-                  background: white;
-                  padding: 1rem;
-                  border-radius: 6px;
-                  margin: 0.5rem 0;
-                  border-left: 3px solid #007BFF;
-              }
-              .role-badge {
-                  background-color: #28a745;
-                  color: white;
-                  padding: 0.5rem 1rem;
-                  border-radius: 25px;
-                  font-weight: bold;
-                  display: inline-block;
-                  margin: 0.5rem 0;
-              }
-              .logout-btn {
-                  background-color: #007BFF;
-                  color: black;
-                  padding: 0.5rem 1rem;
-                  border: none;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  text-decoration: none;
-                  display: inline-block;
-                  transition: background-color 0.3s ease;
-              }
-              .logout-btn:hover {
-                  background-color: #dee2e6;
-              }
-/* Finaliza estilos dashboard */
-
-.hero {
-    animation: fadeIn 1s ease-in-out;
-    display: flex; /* Habilitamos Flexbox */
-    flex-direction: column; /* Apilamos los elementos verticalmente */
-    justify-content: center; /* Centramos verticalmente */
-    align-items: center; /* Centramos horizontalmente */
-    min-height: 60vh; /* Le damos una altura mínima para que el centrado sea notorio */
-}
-
-.hero h2 {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-}
-
-.hero p {
-    font-size: 1.2rem;
-    max-width: 800px;
-    margin: 0 auto 2rem;
-}
-
-.cta-button {
-    background-color: #333;
-    color: white;
-    padding: 1rem 2rem;
-    text-decoration: none;
-    border-radius: 5px;
-    font-size: 1.2rem;
-    transition: background-color 0.3s, transform 0.3s;
 }
 
 .cta-button:hover {
-    background-color: #555;
+    background-color: var(--uagrm-blue-hover);
     transform: translateY(-2px);
 }
 
-/* Estilos para el contenedor del logo en el header */
-.header-logo-container {
-    padding-top: 3rem; 
-    display: flex; /* Usar flexbox para alinear el logo y el posible H1 */
-    justify-content: center; /* Centrar horizontalmente */
-    align-items: center; /* Centrar verticalmente */
-    padding-bottom: 0.3rem; /* Un poco de espacio abajo si no hay h1 */
+.cta-button.secondary {
+    background-color: var(--text-muted);
 }
-
-.header-logo-container2 {
-    display: flex; /* Usar flexbox para alinear el logo y el posible H1 */
-    justify-content: center; /* Centrar horizontalmente */
-    align-items: center; /* Centrar verticalmente */
-    padding-bottom: 0.5 rem; /* Un poco de espacio abajo si no hay h1 */
-}
-
-/* Estilos para el logo dentro del header */
-.header-logo {
-    max-width: 400px; /* Limita el ancho del logo para que no sea demasiado grande */
-    height: auto; /* Mantiene la proporción de la imagen */
-    margin: 0 auto; /* Centra la imagen si el contenedor es más ancho */
-    display: block; /* Asegura que no haya espacio extra debajo de la imagen */
-}
-
-/* Ajuste para el h1 si decides ponerlo junto al logo */
-.header-logo-container h1 {
-    margin-left: 1rem; /* Espacio entre el logo y el título */
-}
-
-/* --- Estilo de cada Tarjeta --- */
-.comision-card {
-  background-color: #ffffff; /* Fondo blanco */
-  border: 1px solid #dee2e6; /* Borde sutil */
-  border-radius: 8px; /* Bordes redondeados para un look moderno */
-  padding: 20px; /* Espacio interno para que el contenido no pegue a los bordes */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Sombra para darle profundidad */
-  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Animación suave */
-}
-
-/* --- Efecto al pasar el mouse por encima de la tarjeta --- */
-.comision-card:hover {
-  transform: translateY(-5px); /* Levanta la tarjeta un poco */
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); /* Aumenta la sombra para destacarla */
-}
-
-/* --- Estilos para el contenido dentro de las tarjetas --- */
-.comision-card h3 {
-  margin-top: 0;
-  color: #0056b3;
-  border-bottom: 2px solid #f0f0f0;
-  padding-bottom: 10px;
-}
-
-.comision-card h4 {
-  color: #495057;
-  margin-bottom: 5px;
-}
-
-.comision-card p {
-  color: #6c757d;
-  line-height: 1.6; /* Mejora la legibilidad */
-}
-
-.comision-card a {
-  color: #007bff;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-.comision-card a:hover {
-  text-decoration: underline;
-}
-
-.comision-grid-container {
-  display: grid;
-  /* Crea columnas que se adaptan al ancho. Cada tarjeta tendrá un mínimo de 350px. */
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 25px; /* Este es el espacio de separación entre las tarjetas */
-  padding: 25px; /* Espacio alrededor de todas las tarjetas */
-}
-
-/* --- Contenedor para Dividir la Pantalla --- */
-.split-container {
-    display: flex; /* Activa Flexbox, la magia para alinear elementos */
-    flex-wrap: wrap; /* Permite que los elementos se apilen si no caben */
-    gap: 30px; /* Espacio elegante entre las dos columnas */
-    padding: 20px; /* Espacio alrededor del contenedor principal */
-}
-
-/* --- Estilos para las Columnas --- */
-.form-column {
-    flex: 1; /* Permite que la columna crezca */
-    min-width: 350px; /* Ancho mínimo para que el formulario no se aplaste */
-    background-color: #ffffff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    height: fit-content; /* Se ajusta a la altura del contenido */
-}
-
-.list-column {
-    flex: 2; /* Hace que esta columna sea el doble de ancha que la del formulario */
-    min-width: 350px;
-}
-
-/* --- Responsividad para Pantallas Pequeñas (Móviles) --- */
-@media (max-width: 992px) {
-    .split-container {
-        /* Cambiamos la dirección para que se apilen verticalmente */
-        flex-direction: column;
-    }
-}
-
-/* --- Estilos para la Nueva Lista de Usuarios --- */
-.user-list-container {
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    /* Altura máxima y scroll */
-    max-height: 600px; /* Ajusta esta altura según tu preferencia */
-    overflow-y: auto; /* ¡La clave para el scroll! */
-    border: 1px solid #e0e0e0;
-}
-
-.user-table {
-    width: 100%;
-    border-collapse: collapse; /* Une los bordes de las celdas */
-    text-align: left;
-}
-
-/* --- Cabecera de la Tabla --- */
-.user-table thead {
-    position: sticky; /* Fija la cabecera en la parte superior */
-    top: 0;
-    z-index: 10;
-}
-
-.user-table th {
-    background-color: #007bff; /* Azul principal de tu diseño */
-    color: white;
-    padding: 15px 20px;
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 0.5px;
-}
-
-/* --- Cuerpo y Filas de la Tabla --- */
-.user-table tbody tr {
-    border-bottom: 1px solid #e0e0e0; /* Línea separadora entre filas */
-    transition: background-color 0.2s ease;
-}
-
-.user-table tbody tr:nth-child(even) {
-    background-color: #f8f9fa; /* Color sutil para filas pares */
-}
-
-.user-table tbody tr:hover {
-    background-color: #e9ecef; /* Resaltado al pasar el mouse */
-}
-
-.user-table td {
-    padding: 15px 20px;
-    vertical-align: middle;
-}
-
-/* --- Estilos para Elementos Específicos --- */
-.user-table .status-active {
-    background-color: #d4edda; /* Verde del estado 'Activo' */
-    color: #155724;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.user-table .edit-button {
-    background-color: #6c757d; /* Un gris neutro */
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-.user-table .edit-button:hover {
+.cta-button.secondary:hover {
     background-color: #5a6268;
 }
 
-/* --- Estilos para la tabla de documentos y formularios --- */
-.documents-container {
-    max-width: 1200px;
-    margin: 20px auto;
-    padding: 20px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-}
-
-.form-container label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-}
-.form-container input[type="text"],
-.form-container input[type="number"],
-.form-container input[type="email"],
-.form-container input[type="password"],
-.form-container select {
-    width: calc(100% - 20px); /* Ajusta para padding */
-    padding: 10px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
+.logout-btn {
+    background-color: var(--uagrm-red);
+    color: white !important;
+    padding: 0.5rem 1rem;
     border-radius: 4px;
-    box-sizing: border-box; /* Incluye padding en el width */
-}
-.form-container button.cta-button {
-    width: 100%;
-    padding: 10px;
-    background-color: #333;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1.1em;
-    transition: background-color 0.3s;
-}
-.form-container button.cta-button:hover {
-    background-color: #555;
-}
-
-/* Estilos para el Drop Area */
-.drop-area {
-    border: 2px dashed #ccc;
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-    margin-bottom: 20px;
-    cursor: pointer;
-    transition: background-color 0.3s, border-color 0.3s;
-}
-.drop-area.highlight {
-    background-color: #f0f8ff;
-    border-color: #007bff;
-}
-.drop-area p {
-    margin: 0;
-    color: #666;
-}
-#file-name-display {
     font-weight: bold;
-    color: #333;
-    margin-top: 10px;
+}
+.logout-btn:hover {
+    background-color: #990000 !important;
+    color: white !important;
 }
 
-/* Estilos para la tabla de documentos */
-.document-table-container {
-    margin-top: 20px;
-    overflow-x: auto; /* Permite scroll horizontal en pantallas pequeñas */
+/* =========================================
+   TARJETAS Y CONTENEDORES
+========================================= */
+.info-card, .welcome-card, .sidebar-card, .session-card, .comision-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
 }
-.document-table {
+
+.welcome-card {
+    background: linear-gradient(135deg, var(--uagrm-blue), #0055a4);
+    color: white;
+}
+.welcome-card h1, .welcome-card p {
+    color: white;
+    margin: 0 0 0.5rem 0;
+}
+
+.info-card h3, .sidebar-card h3 {
+    font-size: 1.3rem;
+    color: var(--uagrm-blue);
+    margin-top: 0;
+    border-bottom: 2px solid var(--uagrm-red);
+    padding-bottom: 0.5rem;
+    display: inline-block;
+}
+
+/* =========================================
+   TABLAS DE DATOS (Usuarios, Documentos)
+========================================= */
+.table-responsive {
+    overflow-x: auto;
+}
+.users-table, .document-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 20px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
 }
-.document-table th, .document-table td {
-    border: 1px solid #ddd;
-    padding: 10px;
+.users-table th, .document-table th {
+    background-color: var(--uagrm-blue);
+    color: white;
+    padding: 1rem;
     text-align: left;
-    vertical-align: middle;
 }
-.document-table th {
-    background-color: #f2f2f2;
-    font-weight: bold;
-    color: #333;
+.users-table td, .document-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
 }
-.document-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-.document-table tbody tr:hover {
-    background-color: #f1f1f1;
+.users-table tbody tr:hover, .document-table tbody tr:hover {
+    background-color: #f8f9fa;
 }
 
-/* Controles de paginación */
-.pagination-controls {
+/* =========================================
+   FORMULARIOS
+========================================= */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+.full-width {
+    grid-column: 1 / -1;
+}
+.form-container label {
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+}
+.form-container input, .form-container select, .form-container textarea {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-family: inherit;
+}
+.form-container input:focus, .form-container select:focus {
+    outline: none;
+    border-color: var(--uagrm-blue);
+    box-shadow: 0 0 5px rgba(0, 51, 102, 0.2);
+}
+
+/* =========================================
+   PESTAÑAS Y ETIQUETAS (BADGES)
+========================================= */
+.tabs {
+    display: flex;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+.tab-button {
+    background: none;
+    border: none;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+}
+.tab-button.active {
+    color: var(--uagrm-blue);
+    border-bottom-color: var(--uagrm-blue);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.status-badge, .badge, .perm-badge {
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.status-active { background-color: #d4edda; color: #155724; }
+.status-inactive { background-color: #f8d7da; color: #721c24; }
+
+/* =========================================
+   MODALES
+========================================= */
+.modal {
+    display: none; position: fixed; z-index: 10000; left: 0; top: 0; 
+    width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);
+}
+.modal-content {
+    background-color: #fff; margin: 5% auto; padding: 2rem; 
+    border-radius: 8px; width: 90%; max-width: 500px;
+}
+.modal-content-pdf {
+    background-color: #fff; margin: 2% auto; border-radius: 8px; 
+    display: flex; flex-direction: column; width: 95%; height: 90vh;
+}
+.modal-header {
+    padding: 15px 20px; background-color: var(--uagrm-blue); color: white;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.close, .close-pdf-modal {
+    color: #fff; font-size: 28px; font-weight: bold; cursor: pointer;
+}
+
+/* =========================================
+   LOGIN ESPECÍFICO (Perfil UAGRM)
+========================================= */
+.login-page {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 15px;
-    margin-top: 20px;
-    padding: 10px 0;
-    background-color: #f8f8f8;
-    border-radius: 8px;
+    height: 100vh;
+    background: url('https://www.uagrm.edu.bo/images/bg-uagrm.jpg') no-repeat center center fixed;
+    background-size: cover;
+}
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 3rem;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    border-top: 5px solid var(--uagrm-red);
+}
+.login-box img {
+    max-width: 150px;
+    margin-bottom: 1.5rem;
+}
+.login-box h2 {
+    color: var(--uagrm-blue);
+    margin-bottom: 2rem;
 }
 
- .pagination-controls span {
-                  font-weight: 500;
-                  color: #555;
-              }
-
-                .pagination-btn {
-                  padding: 10px 20px !important; /* Adjust padding */
-                  font-size: 0.95rem !important; /* Adjust font size */
-                  width: auto !important; /* Override full width */
-                  text-decoration: none; /* Remove underline from link */
-                  line-height: 1.5; /* Ensure text fits */
-              }
-              .pagination-btn.disabled {
-                  background-color: #ccc;
-                  color: #777;
-                  cursor: not-allowed;
-                  pointer-events: none; /* Make it unclickable */
-                  transform: none; /* Disable hover effect */
-              }
-
-.pagination-controls button {
-    padding: 10px 20px;
-    background-color: #333;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.3s;
-}
-.pagination-controls button:hover:not(:disabled) {
-    background-color: #555;
-}
-.pagination-controls button:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-}
-#pageInfo {
-    font-weight: bold;
-    color: #333;
-}
-
-/* Controles de búsqueda y filtro */
-.search-filter-controls {
-    display: flex;
-    flex-wrap: wrap; /* Permite que los elementos se envuelvan en pantallas pequeñas */
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    gap: 10px; /* Espacio entre elementos */
-}
-.search-filter-controls input,
-.search-filter-controls select {
-    flex: 1; /* Permite que ocupen el espacio disponible */
-    min-width: 150px; /* Ancho mínimo para que no se compriman demasiado */
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+img {
+    max-width: 100% !important;
+    height: auto !important;
     box-sizing: border-box;
 }
-.search-filter-controls button.cta-button {
-    padding: 10px 15px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-.search-filter-controls button.cta-button:hover {
-    background-color: #0056b3;
-}
 
-.search-controls {
-                  display: flex;
-                  gap: 10px;
-                  margin-bottom: 1.5rem; /* Space below search */
-                  align-items: center;
-              }
-              .search-controls input[type="search"] {
-                  flex-grow: 1; /* Take available space */
-                  padding: 10px 15px;
-                  border: 1px solid #ccc;
-                  border-radius: 6px;
-                  font-size: 1rem;
-              }
-              .search-controls .cta-button {
-                  padding: 10px 20px !important; /* Match input height */
-                  margin-top: 0 !important; /* Remove top margin */
-                  width: auto !important; /* Specific width */
-                  font-size: 0.95rem !important;
-              }
-
-
-
-/* Botones de acción en la tabla */
-.action-buttons {
-    display: flex;
-    gap: 8px; /* Espacio entre los botones "Ver" y "Descargar" */
-    flex-wrap: wrap; /* Para pantallas pequeñas */
-}
-.action-buttons button, .action-buttons a {
-    padding: 6px 12px;
-    border-radius: 4px;
-    text-decoration: none;
-    font-size: 0.85em;
-    white-space: nowrap; /* Evita que el texto del botón se rompa */
-}
-.view-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-}
-.view-button:hover { background-color: #0056b3; }
-.download-button {
-    background-color: #28a745;
-    color: white;
-    border: none;
-}
-.download-button:hover { background-color: #218838; }
-
-/* Modal de PDF */
-.modal {
-    display: none; /* Oculto por defecto */
-    position: fixed; /* Permanece en su lugar incluso al hacer scroll */
-    z-index: 10000; /* Asegura que esté por encima de todo */
-    left: 0;
-    top: 0;
+/* Forzar tamaño del logo en Login e Inicio */
+.logo-institucional {
     width: 100%;
-    height: 100%;
-    overflow: hidden; /* Evita scroll en el fondo */
-    background-color: rgba(0,0,0,0.85); /* Fondo semitransparente oscuro */
-    animation: fadeInModal 0.3s ease-out;
+    max-width: 180px !important; /* Límite máximo en PC */
+    height: auto !important;
+    margin: 0 auto 1.5rem auto !important;
+    display: block !important;
 }
-.modal-content-pdf {
-    background-color: #fff;
-    margin: 2% auto; /* Ajusta el margen superior para más espacio */
-    width: 95%; /* Un poco más de ancho */
-    height: 95%; /* Un poco más de alto */
-    border-radius: 10px;
-    overflow: hidden;
+
+/* =========================================
+   LOGIN Y PÁGINA DE INICIO (CENTRADOS)
+========================================= */
+/* Sobrescribir el body general solo para estas páginas */
+body.login-body {
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important; /* Anula el flexbox conflictivo del body general */
+    background: url('https://www.uagrm.edu.bo/images/bg-uagrm.jpg') no-repeat center center fixed;
+    background-size: cover;
+    height: 100vh;
+}
+
+/* Contenedor que hace la magia de centrar en el medio de la pantalla */
+.login-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 20px; /* Margen de seguridad para celulares */
+    box-sizing: border-box;
+}
+
+.login-box {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 2.5rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    
+    /* Reglas Responsivas Clave */
+    width: 100%; 
+    max-width: 400px; /* En PC medirá 400px, en celulares se encogerá al 100% de la pantalla */
+    
+    text-align: center;
+    border-top: 5px solid var(--uagrm-red);
+    box-sizing: border-box; /* Evita que el padding haga crecer la caja */
+}
+
+.login-box h2 {
+    color: var(--uagrm-blue);
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem; /* Ajuste para que no se rompa en móviles */
+}
+
+/* =========================================
+   ESTÉTICA DE LAS CAJAS DE TEXTO (LOGIN)
+========================================= */
+
+.login-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+/* Diseño de las etiquetas (labels) */
+.login-form label {
+    display: block;
+    font-weight: 600;
+    color: var(--uagrm-blue);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+}
+
+/* Diseño moderno de las cajas de texto */
+.login-form input[type="text"],
+.login-form input[type="number"],
+.login-form input[type="password"] {
+    width: 100%;
+    padding: 14px 16px; /* Más espacio para que no se vea apretado */
+    font-size: 1rem;
+    color: var(--text-dark);
+    background-color: #f8f9fa; /* Fondo ligeramente gris para destacar del blanco */
+    border: 2px solid #e9ecef; /* Borde suave */
+    border-radius: 8px; /* Bordes más redondeados y modernos */
+    box-sizing: border-box; 
+    transition: all 0.3s ease; /* Transición suave para las animaciones */
+}
+
+/* Efecto elegante cuando el usuario hace clic (Focus) */
+.login-form input[type="text"]:focus,
+.login-form input[type="number"]:focus,
+.login-form input[type="password"]:focus {
+    outline: none;
+    background-color: #ffffff;
+    border-color: var(--uagrm-blue);
+    /* Un "anillo" de brillo azul semitransparente muy moderno */
+    box-shadow: 0 0 0 4px rgba(0, 51, 102, 0.1); 
+}
+
+/* Color sutil para el texto de sugerencia (placeholder) */
+.login-form input::placeholder {
+    color: #adb5bd;
+    font-weight: 400;
+}
+
+/* Ajuste fino al botón del login para que haga juego */
+.login-form .cta-button {
+    font-size: 1.1rem;
+    padding: 14px 24px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 10px rgba(0, 51, 102, 0.2);
+}
+
+/* =========================================
+   NUEVO LAYOUT: BARRA LATERAL (SIDEBAR)
+========================================= */
+
+.app-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--uagrm-bg);
+}
+
+/* --- BARRA LATERAL --- */
+.sidebar {
+    width: 260px;
+    background-color: var(--uagrm-blue);
+    color: white;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    animation: zoomIn 0.3s ease-out;
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.1);
 }
-.modal-header {
-    padding: 15px 20px;
-    background-color: #333;
+
+.sidebar-header {
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--uagrm-blue-hover);
+}
+
+.sidebar-header h2 {
+    margin: 10px 0 0 0;
+    font-size: 1.3rem;
     color: white;
+    border: none;
+}
+
+.sidebar-menu {
+    flex: 1;
+    padding: 20px 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-menu a {
+    display: flex;
+    align-items: center;
+    padding: 14px 25px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 1.05rem;
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.sidebar-menu a:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.sidebar-menu a.active {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-left-color: var(--uagrm-red);
+    font-weight: 600;
+}
+
+/* --- CONTENIDO PRINCIPAL --- */
+.main-content {
+    flex: 1;
+    margin-left: 260px; /* Deja el espacio exacto del sidebar */
+    display: flex;
+    flex-direction: column;
+    width: calc(100% - 260px);
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Barra superior (Topbar) */
+.topbar {
+    background-color: #ffffff;
+    padding: 15px 30px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #444;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    border-bottom: 3px solid var(--uagrm-red);
 }
-.modal-header h2 {
-    margin: 0;
-    font-size: 1.4em;
-    font-weight: 500;
-}
-.close-pdf-modal {
-    color: white;
-    font-size: 35px;
-    font-weight: bold;
-    cursor: pointer;
-    line-height: 1; /* Para centrar el 'x' */
-}
-.close-pdf-modal:hover,
-.close-pdf-modal:focus {
-    color: #ddd;
-    text-decoration: none;
-}
-.pdf-iframe {
-    flex-grow: 1; /* Ocupa todo el espacio restante */
-    width: 100%;
-    height: 100%;
+
+.hamburger-btn {
+    display: none;
+    background: none;
     border: none;
+    font-size: 1.8rem;
+    color: var(--uagrm-blue);
+    cursor: pointer;
+    padding: 0;
 }
 
-/*Estilos dashboard*/
+.page-content-wrapper {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+}
 
-@media (min-width: 992px) { 
-    .dashboard-main-grid {
-        /* Create two columns: left takes up roughly 2/3, right takes 1/3 */
-        grid-template-columns: 2fr 1fr; 
+/* --- RESPONSIVIDAD (MÓVILES Y TABLETS) --- */
+@media (max-width: 992px) {
+    .sidebar {
+        transform: translateX(-100%); /* Oculta el menú a la izquierda */
     }
-
-    .dashboard-left-column {
-        /* Sections within the left column will stack vertically */
-        display: flex;
-        flex-direction: column;
-        gap: 2rem; /* Consistent spacing within the column */
+    .sidebar.open {
+        transform: translateX(0); /* Lo muestra cuando se hace clic */
+    }
+    .main-content {
+        margin-left: 0;
+        width: 100%;
+    }
+    .hamburger-btn {
+        display: block; /* Muestra el botón de menú en móviles */
+    }
+    .topbar {
+        padding: 15px;
+    }
+    .page-content-wrapper {
+        padding: 1rem;
     }
     
-    .dashboard-right-column {
-         /* Optional: Add a top margin if needed */
-        margin-top: 0; /* Adjust as needed */
+    /* Capa oscura que aparece detrás del menú en móviles */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 998;
     }
-}
-
-/* Adjust card margins if needed */
-.report-card, .info-card, .comisiones-section, .gaceta-button {
-    margin-bottom: 0; /* Remove default bottom margin if grid gap handles spacing */
-}
-
-/* Ensure headings have appropriate margins */
-.dashboard-left-column h3 {
-    margin-top: 1rem; /* Add some space above module headings */
-    margin-bottom: 1rem;
-}
-
-/* Existing styles for cards remain the same */
-.quick-actions {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-/* Animaciones para el modal */
-@keyframes fadeInModal {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-@keyframes zoomIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .search-filter-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .search-filter-controls input,
-    .search-filter-controls select,
-    .search-filter-controls button {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-    .document-table th, .document-table td {
-        padding: 6px;
-        font-size: 0.9em;
-    }
-    .action-buttons {
-        flex-direction: column;
-        gap: 3px;
-    }
-    .action-buttons button, .action-buttons a {
-        padding: 4px 8px;
-        font-size: 0.8em;
-    }
-    .modal-content-pdf {
-        width: 98%;
-        height: 98%;
-        margin: 1% auto;
-    }
-}
-
-/* --- Estilos para el Modal de Previsualización de Documentos --- */
-
-        /* El fondo oscuro que cubre la página */
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 10000; 
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto; 
-            background-color: rgba(0,0,0,0.85);
-            padding: 20px; /* Añade un poco de espacio en los bordes para pantallas pequeñas */
-        }
-
-        /* El contenedor principal del modal */
-        .modal-content-pdf {
-            background-color: #444; /* Un fondo oscuro para el contenedor del PDF */
-            margin: 2% auto; /* Margen superior/inferior más pequeño, centrado horizontalmente */
-            border-radius: 8px;
-            overflow: hidden; /* Asegura que el contenido no se salga de los bordes redondeados */
-            display: flex;
-            flex-direction: column;
-            
-            /* --- La clave de la responsividad --- */
-            width: 95%; /* Usa casi todo el ancho disponible */
-            max-width: 1200px; /* Pero nunca será más grande que 1200px en monitores grandes */
-            height: 90vh; /* Usa el 90% de la altura de la ventana del navegador */
-            max-height: 900px; /* Pero nunca será más alto que 900px */
-        }
-
-        /* La cabecera del modal */
-        .modal-header {
-            padding: 10px 20px;
-            background-color: #333;
-            color: white;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.1em;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis; /* Evita que títulos muy largos rompan el diseño */
-        }
-
-        .close-pdf-modal {
-            color: #aaa;
-            font-size: 30px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color 0.2s ease;
-        }
-
-        .close-pdf-modal:hover,
-        .close-pdf-modal:focus {
-            color: white;
-            text-decoration: none;
-        }
-
-        /* El iframe donde se muestra el PDF */
-        .pdf-iframe {
-            flex-grow: 1; /* Hace que el iframe ocupe todo el espacio vertical restante */
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        /* --- Media Query para pantallas pequeñas (móviles) --- */
-        @media (max-width: 768px) {
-            .modal-content-pdf {
-                width: 100%; /* En móviles, usa todo el ancho */
-                height: 95vh; /* Y casi toda la altura */
-                margin: auto; /* Centra el modal completamente */
-                border-radius: 0; /* Sin bordes redondeados para un look de pantalla completa */
-            }
-            .modal {
-                padding: 0; /* Sin padding en el fondo oscuro */
-            }
-            .modal-header h2 {
-                font-size: 1em; /* Título un poco más pequeño en móviles */
-            }
-        }
-
-/* Animaciones */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    .sidebar-overlay.active {
+        display: block;
     }
 }

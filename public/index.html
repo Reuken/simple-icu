@@ -3,30 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inicio - Gestion de Documentacion - ICU</title>
-    <link rel="stylesheet" href="estilos.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>Inicio - Gestión Documental ICU</title>
+    <link rel="stylesheet" href="/estilos.css">
 </head>
 <body>
-        <nav>
-        <a href="/" class="logo">ICU</a>
+    <nav>
+        <a href="/" class="logo">ICU - U.A.G.R.M.</a>
         <div class="nav-links">
-            <a href="/">Inicio</a>
+            <a href="/" class="active">Inicio</a>
             <a href="/acerca.html">Acerca del ICU</a>
+            <a href="/login.html" class="cta-button" style="padding: 8px 15px; margin: 0;">Iniciar Sesión</a>
         </div>
     </nav>
-    <main>
-        <div class="header-logo-container2">
-            <img src="img/icu_con_texto.png" alt="Logo Ilustre Consejo Universitario" class="header-logo">
-        </div>
-        <section class="hero">
-        <h1>Software para el manejo de documentacion del ICU con NLP</h1>
+
+    <main class="main-container" style="max-width: 800px; text-align: center; margin-top: 4rem;">
+        <!-- Control estricto de la imagen central -->
+        <img src="img/icu_con_texto.png" alt="Logo Ilustre Consejo Universitario" class="logo-institucional" style="margin-bottom: 2rem;">
         
-        <p><br>Este proyecto busca beneficiar tanto a los administrativos pertenecientes a este organo de co-gobierno que manejan grandes volumenes de documentos como a los consejeros ICUs que requieren consultar o analizar la información para la toma de decisiones dentro de la UAGRM. Al proporcionar un sistema intuitivo, escalable y eficiente, se espera optimizar procesos y establecer un modelo replicable para otros departamentos o instituciones dentro de la UAGRM.
-        <br></p>
-        <h4>¿Eres administrativo o consejero ICU?</h4>
-        <a href="/login.html" class="cta-button">Ingresa Ahora</a>
-        </section>
+        <div class="info-card" style="padding: 3rem 2rem;">
+            <h1 style="color: var(--uagrm-blue); margin-bottom: 1.5rem;">Software para el manejo de documentación del ICU con PLN</h1>
+            
+            <p style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); text-align: justify; margin-bottom: 2rem;">
+                Este proyecto busca beneficiar tanto a los administrativos pertenecientes a este órgano de co-gobierno que manejan grandes volúmenes de documentos, como a los consejeros ICU que requieren consultar o analizar la información para la toma de decisiones dentro de la UAGRM. 
+                <br><br>
+                Al proporcionar un sistema intuitivo, escalable y eficiente, se espera optimizar procesos y establecer un modelo replicable para otros departamentos o instituciones.
+            </p>
+            
+            <h4 style="color: var(--text-dark); margin-bottom: 1rem;">¿Eres administrativo o consejero ICU?</h4>
+            <a href="/login.html" class="cta-button">Ingresa Ahora al Sistema</a>
+        </div>
     </main>
 </body>
 </html>
