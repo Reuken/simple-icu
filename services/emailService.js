@@ -1,67 +1,55 @@
 // services/emailService.js
-const nodemailer = require('nodemailer');
 const { pool } = require('../config/database');
-require('dotenv').config();
+const { emailQueue } = require('./queueService');
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
-
-async function notificarProgramacionSesion(sesion) {
+async function notificarProgramacionSesion({ tipo, lugar, fecha, hora }) {
     try {
-        const result = await pool.query(
-            `SELECT email FROM usuarios WHERE tipo_usuario = 'consejero' AND es_activo = true`
-        );
-        const correos = result.rows.map(r => r.email).filter(Boolean);
+        // 1. Obtener los correos de todos los consejeros activos
+        const result = await pool.query(`
+            SELECT u.email, u.nombre 
+            FROM usuarios u 
+            INNER JOIN consejeros_icu c ON u.id = c.usuario_id 
+            WHERE u.es_activo = true AND u.email IS NOT NULL
+        `);
+        
+        const consejeros = result.rows;
+        if (consejeros.length === 0) return;
 
-        if (correos.length === 0) return;
+        console.log(`📥 Encolando ${consejeros.length} correos para la sesión ${tipo}...`);
 
-        const appUrl = process.env.APP_URL || 'http://localhost:3000';
-        const fechaFormateada = new Date(sesion.fecha).toLocaleDateString('es-ES', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-        });
-
-        const mailOptions = {
-            from: `"Ilustre Consejo Universitario - UAGRM" <${process.env.EMAIL_USER}>`,
-            bcc: correos.join(','),
-            subject: `Convocatoria a Sesión ${sesion.tipo} del ICU`,
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #003366; color: white; padding: 20px; text-align: center;">
-                        <h2 style="margin: 0;">Ilustre Consejo Universitario</h2>
-                        <p style="margin: 5px 0 0 0; opacity: 0.8;">Universidad Autónoma Gabriel René Moreno</p>
-                    </div>
-                    <div style="padding: 25px; color: #333; line-height: 1.6;">
-                        <h3 style="color: #003366; border-bottom: 2px solid #cc0000; padding-bottom: 8px;">Convocatoria Oficial</h3>
-                        <p>Estimado(a) Consejero(a):</p>
-                        <p>Se le convoca formalmente a la <strong>Sesión ${sesion.tipo}</strong> del ICU que se llevará a cabo bajo los siguientes datos:</p>
-                        <ul>
-                            <li><strong>Fecha:</strong> ${fechaFormateada}</li>
-                            <li><strong>Hora:</strong> ${sesion.hora}</li>
-                            <li><strong>Lugar:</strong> ${sesion.lugar}</li>
-                        </ul>
-                        <p>Para revisar el orden del día, los reglamentos sugeridos y la documentación adjunta, acceda a la plataforma:</p>
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${appUrl}/mi_espacio" style="background-color: #003366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">Ingresar a Mi Espacio ICU</a>
-                        </div>
-                    </div>
-                    <div style="background-color: #f8f9fa; padding: 12px; text-align: center; font-size: 0.8rem; color: #6c757d; border-top: 1px solid #eee;">
-                        Mensaje automático emitido por el Sistema Documental del ICU.
-                    </div>
+        // 2. Iterar y agregar cada correo a la cola (BullMQ)
+        for (const consejero of consejeros) {
+            const htmlContent = `
+                <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+                    <h2 style="color: #0055a4;">Convocatoria a Sesión ${tipo} del ICU</h2>
+                    <p>Estimado/a <strong>${consejero.nombre}</strong>,</p>
+                    <p>Se le notifica que ha sido convocada una nueva sesión del Ilustre Consejo Universitario con los siguientes detalles:</p>
+                    <ul>
+                        <li><strong>Fecha:</strong> ${fecha}</li>
+                        <li><strong>Hora:</strong> ${hora}</li>
+                        <li><strong>Lugar:</strong> ${lugar}</li>
+                    </ul>
+                    <p>Puede revisar la agenda y los documentos a tratar ingresando a su panel en <strong>Mi Espacio ICU</strong>.</p>
                 </div>
-            `
-        };
+            `;
 
-        transporter.sendMail(mailOptions, (err) => {
-            if (err) console.error('❌ Error enviando correo de convocatoria:', err);
-            else console.log('📧 Correos de convocatoria enviados a los consejeros.');
-        });
+            // Agregar a la cola con configuración de reintentos automáticos
+            await emailQueue.add('enviar-convocatoria', {
+                to: consejero.email,
+                subject: `Convocatoria ICU - Sesión ${tipo}`,
+                html: htmlContent
+            }, {
+                attempts: 3, // Reintentar 3 veces si el servidor de correos falla
+                backoff: {
+                    type: 'exponential',
+                    delay: 5000 // Esperar 5s, luego 25s, luego 125s...
+                }
+            });
+        }
+        
+        console.log('✅ Todos los correos han sido enviados a la cola de Redis.');
     } catch (error) {
-        console.error('❌ Error al preparar notificaciones de correo:', error);
+        console.error('Error al encolar notificaciones de sesión:', error);
     }
 }
 
